@@ -53,21 +53,14 @@ class RAGService:
                 "error": "Paper not found",
             }
 
-        # Retrieve full paper text: vector store -> local PDF -> download PDF -> abstract
+        # Load full paper text directly from PDF
         context = ""
-        try:
-            context = await self.vector_store.get_full_paper_text(
-                arxiv_id=arxiv_id,
-            )
-        except Exception as e:
-            logger.warning(f"Failed to retrieve from vector store: {e}")
 
-        # Fallback: extract text directly from local PDF
-        if not context and paper.local_pdf_path and Path(paper.local_pdf_path).exists():
+        # Try local PDF first
+        if paper.local_pdf_path and Path(paper.local_pdf_path).exists():
             try:
-                logger.info(f"Extracting text from local PDF: {paper.local_pdf_path}")
                 context = self.pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
-                logger.info(f"Extracted {len(context)} chars from PDF")
+                logger.info(f"Loaded {len(context)} chars from local PDF")
             except Exception as e:
                 logger.warning(f"Failed to extract text from PDF: {e}")
 
@@ -80,7 +73,7 @@ class RAGService:
 
         # Final fallback: use abstract
         if not context:
-            logger.info("Using abstract as context (no full text available)")
+            logger.info("Using abstract as context (no PDF available)")
             context = paper.abstract
 
         # Build conversation context
