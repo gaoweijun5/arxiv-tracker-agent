@@ -58,6 +58,11 @@ export const papersApi = {
     await api.delete(`/papers/${id}`)
   },
 
+  downloadPdf: async (id: number): Promise<{ message: string; text_length: number; chunks: number }> => {
+    const { data } = await api.post(`/papers/${id}/download`)
+    return data
+  },
+
   search: async (query: string, k?: number): Promise<{ results: SearchResult[] }> => {
     const { data } = await api.post('/papers/search', null, { params: { query, k } })
     return data

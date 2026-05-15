@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, MessageSquare, Send, Loader2 } from 'lucide-react'
+import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, MessageSquare, Send, Loader2, Download } from 'lucide-react'
 import { papersApi, conversationsApi } from '../../../services/api'
 import type { Paper, Conversation } from '../../../types'
 import { format } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
+import toast from 'react-hot-toast'
 
 export default function PaperDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -85,6 +86,24 @@ export default function PaperDetailPage() {
     }
   }
 
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (!paper) return
+    setDownloading(true)
+    try {
+      const result = await papersApi.downloadPdf(paper.id)
+      setPaper((prev) =>
+        prev ? { ...prev, is_downloaded: true, local_pdf_path: 'downloaded' } : null
+      )
+      toast.success(`PDF processed: ${result.chunks} chunks created`)
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to download PDF')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -154,9 +173,29 @@ export default function PaperDetailPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded"
+                    title="View PDF"
                   >
                     <ExternalLink className="w-4 h-4 text-gray-400" />
                   </a>
+                )}
+                {!paper.is_downloaded && paper.pdf_url && (
+                  <button
+                    onClick={handleDownloadPdf}
+                    disabled={downloading}
+                    className="p-1.5 hover:bg-gray-100 rounded disabled:opacity-50"
+                    title="Download PDF for AI Q&A"
+                  >
+                    {downloading ? (
+                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 text-gray-400" />
+                    )}
+                  </button>
+                )}
+                {paper.is_downloaded && (
+                  <span className="text-[10px] text-green-600 px-1.5 py-0.5 bg-green-50 rounded">
+                    PDF Ready
+                  </span>
                 )}
                 <button
                   onClick={() => setShowChat(!showChat)}

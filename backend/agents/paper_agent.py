@@ -235,22 +235,27 @@ def create_paper_workflow() -> StateGraph:
         return {**state, "daily_digest": digest}
 
     async def save_to_database(state: PaperState) -> PaperState:
-        """Node: Save relevant papers to database."""
+        """Node: Save relevant papers to database with PDF processing."""
         task_id = state.get("task_id")
         await send_ws_progress(task_id, "save", 96, "Saving papers to database...")
 
         logger.info("Saving papers to database...")
         from backend.models.database import get_session_factory, Paper, PaperRecommendation
         from backend.services.vector_store import get_vector_store
+        from backend.services.pdf_service import get_pdf_service
+        from backend.services.arxiv_service import get_arxiv_service
 
         vector_store = get_vector_store()
+        pdf_service = get_pdf_service()
+        arxiv_service = get_arxiv_service()
         factory = get_session_factory()
 
         recommendations = state.get("recommendations", [])
         saved_count = 0
+        total = len(recommendations)
 
         async with factory() as session:
-            for rec in recommendations:
+            for i, rec in enumerate(recommendations):
                 paper_data = rec["paper"]
                 try:
                     # Check if paper already exists
@@ -264,6 +269,33 @@ def create_paper_workflow() -> StateGraph:
                         logger.info(f"Paper {paper_data['arxiv_id']} already exists")
                         continue
 
+                    # Update progress
+                    await send_ws_progress(
+                        task_id, "save", 96 + int(3 * (i / total)),
+                        f"Processing: {paper_data['title'][:40]}..."
+                    )
+
+                    # Download PDF and extract text
+                    pdf_path = None
+                    full_text = None
+                    is_downloaded = False
+
+                    if paper_data.get("pdf_url"):
+                        try:
+                            # Search for the paper to get arxiv.Result object
+                            papers = await arxiv_service.search_papers(
+                                keywords=[paper_data["arxiv_id"]],
+                                max_results=1,
+                            )
+                            if papers:
+                                pdf_path = await arxiv_service.download_pdf(papers[0])
+                                if pdf_path:
+                                    is_downloaded = True
+                                    full_text = pdf_service.extract_text(pdf_path)
+                                    logger.info(f"Extracted {len(full_text)} chars from PDF")
+                        except Exception as e:
+                            logger.warning(f"Failed to download/process PDF: {e}")
+
                     # Save to database
                     paper = Paper(
                         arxiv_id=paper_data["arxiv_id"],
@@ -273,21 +305,33 @@ def create_paper_workflow() -> StateGraph:
                         categories=paper_data["categories"],
                         published_date=paper_data["published_date"],
                         pdf_url=paper_data.get("pdf_url"),
+                        local_pdf_path=str(pdf_path) if pdf_path else None,
                         ai_summary=paper_data.get("ai_summary"),
                         ai_summary_zh=paper_data.get("ai_summary_zh"),
                         key_findings=paper_data.get("key_findings"),
                         relevance_score=rec["score"],
-                        is_downloaded=False,
+                        is_downloaded=is_downloaded,
                     )
                     session.add(paper)
                     await session.flush()
 
-                    # Add to vector store
+                    # Add abstract to vector store
                     await vector_store.add_paper(
                         arxiv_id=paper_data["arxiv_id"],
                         title=paper_data["title"],
                         abstract=paper_data["abstract"],
                     )
+
+                    # Add full text chunks to vector store for RAG
+                    if full_text:
+                        chunks = pdf_service.chunk_text(full_text)
+                        if chunks:
+                            await vector_store.add_paper_chunks(
+                                arxiv_id=paper_data["arxiv_id"],
+                                title=paper_data["title"],
+                                chunks=chunks,
+                            )
+                            logger.info(f"Added {len(chunks)} chunks to vector store")
 
                     # Save recommendation
                     recommendation = PaperRecommendation(

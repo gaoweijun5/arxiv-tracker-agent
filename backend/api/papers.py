@@ -162,9 +162,6 @@ async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Paper not found")
 
     # Delete related recommendations
-    await db.execute(
-        select(PaperRecommendation).where(PaperRecommendation.paper_id == paper_id)
-    )
     recs_result = await db.execute(
         select(PaperRecommendation).where(PaperRecommendation.paper_id == paper_id)
     )
@@ -194,6 +191,76 @@ async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     return {"message": "Paper deleted", "arxiv_id": paper.arxiv_id}
+
+
+@router.post("/{paper_id}/download")
+async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
+    """Download and process paper PDF for RAG."""
+    result = await db.execute(select(Paper).where(Paper.id == paper_id))
+    paper = result.scalar_one_or_none()
+
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    if paper.is_downloaded:
+        return {"message": "Paper already downloaded", "arxiv_id": paper.arxiv_id}
+
+    if not paper.pdf_url:
+        raise HTTPException(status_code=400, detail="No PDF URL available")
+
+    try:
+        from backend.services.arxiv_service import get_arxiv_service
+        from backend.services.pdf_service import get_pdf_service
+        from backend.services.vector_store import get_vector_store
+
+        arxiv_service = get_arxiv_service()
+        pdf_service = get_pdf_service()
+        vector_store = get_vector_store()
+
+        # Search for the paper to get arxiv.Result object
+        papers = await arxiv_service.search_papers(
+            keywords=[paper.arxiv_id],
+            max_results=1,
+        )
+
+        if not papers:
+            raise HTTPException(status_code=404, detail="Paper not found on arXiv")
+
+        # Download PDF
+        pdf_path = await arxiv_service.download_pdf(papers[0])
+        if not pdf_path:
+            raise HTTPException(status_code=500, detail="Failed to download PDF")
+
+        # Extract text
+        full_text = pdf_service.extract_text(pdf_path)
+        if not full_text:
+            raise HTTPException(status_code=500, detail="Failed to extract text from PDF")
+
+        # Chunk and store in vector DB
+        chunks = pdf_service.chunk_text(full_text)
+        if chunks:
+            await vector_store.add_paper_chunks(
+                arxiv_id=paper.arxiv_id,
+                title=paper.title,
+                chunks=chunks,
+            )
+
+        # Update database
+        paper.local_pdf_path = str(pdf_path)
+        paper.is_downloaded = True
+        await db.commit()
+
+        return {
+            "message": "PDF downloaded and processed",
+            "arxiv_id": paper.arxiv_id,
+            "text_length": len(full_text),
+            "chunks": len(chunks),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/search")
