@@ -9,15 +9,16 @@ from loguru import logger
 class PDFService:
     """Service for processing PDF documents."""
 
-    def extract_text(self, pdf_path: Path) -> Optional[str]:
+    def extract_text(self, pdf_path) -> Optional[str]:
         """Extract text content from a PDF file.
 
         Args:
-            pdf_path: Path to PDF file
+            pdf_path: Path to PDF file (str or Path)
 
         Returns:
             Extracted text or None if failed
         """
+        pdf_path = Path(pdf_path)
         try:
             doc = fitz.open(str(pdf_path))
             text_parts = []
