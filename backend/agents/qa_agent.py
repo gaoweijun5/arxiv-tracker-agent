@@ -34,11 +34,15 @@ def create_qa_workflow() -> StateGraph:
     """
 
     async def retrieve_context(state: QAState) -> QAState:
-        """Node: Retrieve relevant context from paper using RAG."""
-        logger.info("Retrieving context for Q&A...")
+        """Node: Retrieve full paper text for Q&A."""
+        logger.info("Retrieving full paper text for Q&A...")
+        from pathlib import Path
         from backend.services.vector_store import get_vector_store
+        from backend.services.pdf_service import get_pdf_service
+        from backend.models.database import get_session_factory, Paper
 
         vector_store = get_vector_store()
+        pdf_service = get_pdf_service()
 
         # Get the latest user message
         messages = state.get("messages", [])
@@ -50,20 +54,45 @@ def create_qa_workflow() -> StateGraph:
         if not question:
             return {**state, "context": "", "sources": []}
 
-        # Retrieve relevant chunks
         arxiv_id = state.get("arxiv_id", "")
+        context = ""
+
+        # Try vector store first
         try:
-            context = await vector_store.get_paper_context(
-                arxiv_id=arxiv_id,
-                query=question,
-                k=5,
-            )
-            logger.info(f"Retrieved {len(context)} chars of context")
-            return {**state, "context": context}
+            context = await vector_store.get_full_paper_text(arxiv_id=arxiv_id)
         except Exception as e:
-            logger.warning(f"Failed to retrieve context: {e}")
-            # Fallback to abstract
-            return {**state, "context": state.get("abstract", "")}
+            logger.warning(f"Failed to retrieve from vector store: {e}")
+
+        # Fallback: extract from local PDF
+        if not context:
+            factory = get_session_factory()
+            async with factory() as session:
+                from sqlalchemy import select
+                result = await session.execute(
+                    select(Paper).where(Paper.id == state.get("paper_id"))
+                )
+                paper = result.scalar_one_or_none()
+
+            if paper and paper.local_pdf_path and Path(paper.local_pdf_path).exists():
+                try:
+                    context = pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
+                except Exception as e:
+                    logger.warning(f"Failed to extract from PDF: {e}")
+
+            # Auto-download if needed
+            if not context and paper and paper.pdf_url:
+                try:
+                    from backend.services.rag_service import get_rag_service
+                    rag = get_rag_service()
+                    context = await rag._download_and_extract_pdf(paper, factory)
+                except Exception as e:
+                    logger.warning(f"Failed to auto-download PDF: {e}")
+
+        if not context:
+            context = state.get("abstract", "")
+
+        logger.info(f"Retrieved {len(context)} chars of full text")
+        return {**state, "context": context}
 
     async def generate_response(state: QAState) -> QAState:
         """Node: Generate AI response using context."""

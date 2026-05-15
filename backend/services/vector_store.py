@@ -325,6 +325,41 @@ class VectorStoreService:
         context = "\n\n---\n\n".join([doc.page_content for doc in results])
         return context
 
+    async def get_full_paper_text(self, arxiv_id: str) -> str:
+        """Get the full text of a paper by retrieving all chunks.
+
+        Args:
+            arxiv_id: ArXiv paper ID
+
+        Returns:
+            Full paper text with chunks joined in order
+        """
+        if self.papers_store is None:
+            logger.warning("Vector store unavailable, returning empty text")
+            return ""
+
+        # Get all chunks for this paper
+        results = self.papers_store.get(
+            where={"arxiv_id": arxiv_id, "type": "paper_chunk"},
+        )
+
+        if not results or not results.get("documents"):
+            logger.warning(f"No chunks found for paper {arxiv_id}")
+            return ""
+
+        # Sort by chunk_index from metadata
+        docs_with_meta = zip(
+            results["documents"],
+            results.get("metadatas", [{}] * len(results["documents"])),
+        )
+        sorted_docs = sorted(
+            docs_with_meta, key=lambda x: x[1].get("chunk_index", 0)
+        )
+
+        full_text = "\n\n".join(doc for doc, _ in sorted_docs)
+        logger.info(f"Retrieved full text for {arxiv_id}: {len(full_text)} chars")
+        return full_text
+
     async def delete_paper(self, arxiv_id: str) -> None:
         """Delete a paper from the vector store."""
         if self.papers_store is None:
