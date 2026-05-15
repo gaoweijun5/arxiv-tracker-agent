@@ -2,6 +2,8 @@
 
 AI-powered arXiv paper tracking and recommendation system built with LangChain, LangGraph, and RAG.
 
+English | [中文](README_CN.md)
+
 ## Features
 
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
