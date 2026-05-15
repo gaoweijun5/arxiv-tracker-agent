@@ -25,6 +25,9 @@ data/
 *.swp
 *.swo
 
+# Claude
+.claude/
+
 # Node
 node_modules/
 frontend/dist/
