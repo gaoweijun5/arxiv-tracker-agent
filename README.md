@@ -1,5 +1,7 @@
 # ArXiv Tracker Agent
 
+> **If you find this project helpful, please give it a ⭐ Star! Your support is my motivation to keep improving.**
+
 AI-powered arXiv paper tracking and recommendation system built with LangChain, LangGraph, and RAG.
 
 English | [中文](README_CN.md)

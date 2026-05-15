@@ -1,5 +1,7 @@
 # ArXiv 论文追踪 Agent
 
+> **如果这个项目对你有帮助，请给一个 ⭐ Star！你的支持是我持续改进的动力。**
+
 基于 LangChain、LangGraph 和 RAG 技术栈构建的 AI 论文追踪与智能推荐系统。
 
 [English](README.md) | 中文
