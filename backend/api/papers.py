@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from backend.models.database import get_db, Paper
 from backend.services.vector_store import get_vector_store
@@ -209,27 +210,26 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No PDF URL available")
 
     try:
-        from backend.services.arxiv_service import get_arxiv_service
         from backend.services.pdf_service import get_pdf_service
         from backend.services.vector_store import get_vector_store
+        from backend.core.config import get_settings
+        import httpx
+        from pathlib import Path
 
-        arxiv_service = get_arxiv_service()
         pdf_service = get_pdf_service()
         vector_store = get_vector_store()
+        settings = get_settings()
 
-        # Search for the paper to get arxiv.Result object
-        papers = await arxiv_service.search_papers(
-            keywords=[paper.arxiv_id],
-            max_results=1,
-        )
+        # Download PDF directly using the URL
+        settings.papers_dir.mkdir(parents=True, exist_ok=True)
+        pdf_path = settings.papers_dir / f"{paper.arxiv_id.replace('/', '_')}.pdf"
 
-        if not papers:
-            raise HTTPException(status_code=404, detail="Paper not found on arXiv")
-
-        # Download PDF
-        pdf_path = await arxiv_service.download_pdf(papers[0])
-        if not pdf_path:
-            raise HTTPException(status_code=500, detail="Failed to download PDF")
+        if not pdf_path.exists():
+            logger.info(f"Downloading PDF from {paper.pdf_url}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(paper.pdf_url, follow_redirects=True, timeout=60.0)
+                response.raise_for_status()
+                pdf_path.write_bytes(response.content)
 
         # Extract text
         full_text = pdf_service.extract_text(pdf_path)
@@ -260,6 +260,7 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to download PDF: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
