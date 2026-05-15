@@ -84,6 +84,21 @@ async def get_paper_conversations(
     return [ConversationResponse(**c.to_dict()) for c in conversations]
 
 
+@router.delete("/paper/{paper_id}")
+async def clear_paper_conversations(paper_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete all conversations for a paper."""
+    result = await db.execute(
+        select(Conversation).where(Conversation.paper_id == paper_id)
+    )
+    conversations = result.scalars().all()
+
+    for conv in conversations:
+        await db.delete(conv)
+    await db.commit()
+
+    return {"message": f"Deleted {len(conversations)} conversations"}
+
+
 @router.delete("/{conversation_id}")
 async def delete_conversation(conversation_id: int, db: AsyncSession = Depends(get_db)):
     """Delete a conversation."""
@@ -99,18 +114,3 @@ async def delete_conversation(conversation_id: int, db: AsyncSession = Depends(g
     await db.commit()
 
     return {"message": "Conversation deleted"}
-
-
-@router.delete("/paper/{paper_id}")
-async def clear_paper_conversations(paper_id: int, db: AsyncSession = Depends(get_db)):
-    """Delete all conversations for a paper."""
-    result = await db.execute(
-        select(Conversation).where(Conversation.paper_id == paper_id)
-    )
-    conversations = result.scalars().all()
-
-    for conv in conversations:
-        await db.delete(conv)
-    await db.commit()
-
-    return {"message": f"Deleted {len(conversations)} conversations"}
