@@ -154,6 +154,10 @@ export const conversationsApi = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/conversations/${id}`)
   },
+
+  clearByPaper: async (paperId: number): Promise<void> => {
+    await api.delete(`/conversations/paper/${paperId}`)
+  },
 }
 
 /** System API */

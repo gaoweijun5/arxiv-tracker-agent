@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, MessageSquare, Send, Loader2, Download } from 'lucide-react'
+import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, MessageSquare, Send, Loader2, Download, Trash2 } from 'lucide-react'
 import { papersApi, conversationsApi } from '../../../services/api'
 import type { Paper, Conversation } from '../../../types'
 import { format } from 'date-fns'
@@ -71,6 +71,18 @@ export default function PaperDetailPage() {
       console.error('Failed to ask question:', error)
     } finally {
       setAsking(false)
+    }
+  }
+
+  const handleClearChat = async () => {
+    if (!paper) return
+    try {
+      await conversationsApi.clearByPaper(paper.id)
+      setConversations([])
+      toast.success('Chat history cleared')
+    } catch (error) {
+      console.error('Failed to clear chat:', error)
+      toast.error('Failed to clear chat history')
     }
   }
 
@@ -249,8 +261,17 @@ export default function PaperDetailPage() {
       {/* Chat sidebar */}
       {showChat && (
         <div className="w-1/2 bg-white border border-gray-200 rounded-lg flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-900">Ask about this paper</h2>
+            {conversations.length > 0 && (
+              <button
+                onClick={handleClearChat}
+                className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                title="Clear chat history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Messages */}
