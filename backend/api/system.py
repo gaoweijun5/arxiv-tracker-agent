@@ -251,3 +251,30 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "0.1.0",
     }
+
+
+@router.get("/scheduler")
+async def get_scheduler_config():
+    """Get scheduler configuration."""
+    from backend.scheduler import get_scheduler_config
+    config = await get_scheduler_config()
+    return config
+
+
+@router.put("/scheduler")
+async def update_scheduler(
+    hour: int = Query(ge=0, le=23),
+    minute: int = Query(ge=0, le=59),
+    is_enabled: bool = True,
+):
+    """Update scheduler configuration."""
+    from backend.scheduler import update_scheduler_config
+
+    await update_scheduler_config(hour, minute, is_enabled)
+
+    return {
+        "message": "Scheduler updated",
+        "hour": hour,
+        "minute": minute,
+        "is_enabled": is_enabled,
+    }

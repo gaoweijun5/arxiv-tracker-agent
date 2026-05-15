@@ -6,6 +6,9 @@ from loguru import logger
 
 from backend.core.config import get_settings
 
+# Global scheduler instance
+_scheduler: Optional[AsyncIOScheduler] = None
+
 
 async def daily_paper_fetch():
     """Daily task to fetch and process new papers."""
@@ -50,7 +53,7 @@ async def daily_paper_fetch():
             # Log the fetch
             log = FetchLog(
                 fetch_date=datetime.utcnow(),
-                categories_fetched=[],
+                categories_fetched=[i.topic for i in interests],
                 papers_found=len(result.get("fetched_papers", [])),
                 papers_relevant=len(result.get("relevant_papers", [])),
                 papers_downloaded=len([p for p in result.get("relevant_papers", []) if p.get("is_downloaded")]),
@@ -113,13 +116,94 @@ async def cleanup_old_papers():
         logger.error(f"Paper cleanup failed: {e}")
 
 
+async def get_scheduler_config() -> dict:
+    """Get scheduler configuration from database."""
+    from backend.models.database import get_session_factory, SchedulerConfig
+    from sqlalchemy import select
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(SchedulerConfig).where(SchedulerConfig.job_id == "daily_paper_fetch")
+        )
+        config = result.scalar_one_or_none()
+
+        if config:
+            return {
+                "hour": config.hour,
+                "minute": config.minute,
+                "is_enabled": config.is_enabled,
+            }
+        else:
+            # Return default
+            settings = get_settings()
+            return {
+                "hour": settings.daily_fetch_hour,
+                "minute": settings.daily_fetch_minute,
+                "is_enabled": True,
+            }
+
+
+async def update_scheduler_config(hour: int, minute: int, is_enabled: bool = True):
+    """Update scheduler configuration."""
+    global _scheduler
+
+    from backend.models.database import get_session_factory, SchedulerConfig
+    from sqlalchemy import select
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(SchedulerConfig).where(SchedulerConfig.job_id == "daily_paper_fetch")
+        )
+        config = result.scalar_one_or_none()
+
+        if config:
+            config.hour = hour
+            config.minute = minute
+            config.is_enabled = is_enabled
+        else:
+            config = SchedulerConfig(
+                job_id="daily_paper_fetch",
+                hour=hour,
+                minute=minute,
+                is_enabled=is_enabled,
+            )
+            db.add(config)
+
+        await db.commit()
+
+    # Update the actual scheduler job
+    if _scheduler:
+        job = _scheduler.get_job("daily_paper_fetch")
+        if job:
+            if is_enabled:
+                job.reschedule(CronTrigger(hour=hour, minute=minute))
+                logger.info(f"Scheduler updated: daily fetch at {hour:02d}:{minute:02d}")
+            else:
+                _scheduler.pause_job("daily_paper_fetch")
+                logger.info("Scheduler paused: daily fetch disabled")
+        elif is_enabled:
+            _scheduler.add_job(
+                daily_paper_fetch,
+                CronTrigger(hour=hour, minute=minute),
+                id="daily_paper_fetch",
+                name="Daily Paper Fetch",
+                replace_existing=True,
+            )
+            logger.info(f"Scheduler added: daily fetch at {hour:02d}:{minute:02d}")
+
+
 def start_scheduler() -> AsyncIOScheduler:
     """Start the APScheduler."""
+    global _scheduler
+
     settings = get_settings()
 
     scheduler = AsyncIOScheduler()
+    _scheduler = scheduler
 
-    # Daily paper fetch
+    # Daily paper fetch - will be updated from database config
     scheduler.add_job(
         daily_paper_fetch,
         CronTrigger(

@@ -193,6 +193,18 @@ export const systemApi = {
     return data
   },
 
+  getSchedulerConfig: async (): Promise<{ hour: number; minute: number; is_enabled: boolean }> => {
+    const { data } = await api.get('/system/scheduler')
+    return data
+  },
+
+  updateSchedulerConfig: async (hour: number, minute: number, is_enabled: boolean): Promise<any> => {
+    const { data } = await api.put('/system/scheduler', null, {
+      params: { hour, minute, is_enabled },
+    })
+    return data
+  },
+
   healthCheck: async (): Promise<{ status: string }> => {
     const { data } = await api.get('/system/health')
     return data

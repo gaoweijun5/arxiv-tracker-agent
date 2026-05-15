@@ -180,6 +180,30 @@ class FetchLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SchedulerConfig(Base):
+    """Scheduler configuration."""
+
+    __tablename__ = "scheduler_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(String(50), unique=True, nullable=False)
+    hour = Column(Integer, nullable=False, default=8)
+    minute = Column(Integer, nullable=False, default=0)
+    is_enabled = Column(Boolean, default=True)
+
+    # Metadata
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "job_id": self.job_id,
+            "hour": self.hour,
+            "minute": self.minute,
+            "is_enabled": self.is_enabled,
+        }
+
+
 # Database engine and session factory
 _engine = None
 _session_factory = None

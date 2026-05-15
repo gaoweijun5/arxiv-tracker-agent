@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Search, CheckCircle, XCircle } from 'lucide-react'
+import { Search, CheckCircle, XCircle, Clock, Save } from 'lucide-react'
 import { systemApi } from '../../services/api'
 import type { FetchLog } from '../../types'
 import { format } from 'date-fns'
 import FetchModal from '../../components/FetchModal'
+import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
   const [fetchLogs, setFetchLogs] = useState<FetchLog[]>([])
   const [loading, setLoading] = useState(true)
   const [showFetchModal, setShowFetchModal] = useState(false)
 
+  // Scheduler config
+  const [schedulerHour, setSchedulerHour] = useState(8)
+  const [schedulerMinute, setSchedulerMinute] = useState(0)
+  const [schedulerEnabled, setSchedulerEnabled] = useState(true)
+  const [savingScheduler, setSavingScheduler] = useState(false)
+
   useEffect(() => {
     loadFetchLogs()
+    loadSchedulerConfig()
   }, [])
 
   const loadFetchLogs = async () => {
@@ -23,6 +31,33 @@ export default function SettingsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadSchedulerConfig = async () => {
+    try {
+      const config = await systemApi.getSchedulerConfig()
+      setSchedulerHour(config.hour)
+      setSchedulerMinute(config.minute)
+      setSchedulerEnabled(config.is_enabled)
+    } catch (error) {
+      console.error('Failed to load scheduler config:', error)
+    }
+  }
+
+  const handleSaveScheduler = async () => {
+    setSavingScheduler(true)
+    try {
+      await systemApi.updateSchedulerConfig(schedulerHour, schedulerMinute, schedulerEnabled)
+      toast.success('Schedule updated')
+    } catch (error) {
+      toast.error('Failed to update schedule')
+    } finally {
+      setSavingScheduler(false)
+    }
+  }
+
+  const formatTime = (hour: number, minute: number) => {
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
   }
 
   return (
@@ -37,7 +72,7 @@ export default function SettingsPage() {
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         <h2 className="text-sm font-medium text-gray-900 mb-2">Manual Fetch</h2>
         <p className="text-xs text-gray-500 mb-3">
-          Fetch latest papers from arXiv based on your interests. You can select specific topics and date range.
+          Fetch latest papers from arXiv. You can select specific topics and date range.
         </p>
         <button
           onClick={() => setShowFetchModal(true)}
@@ -48,11 +83,73 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* Scheduler */}
+      {/* Auto Fetch Schedule */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-sm font-medium text-gray-900 mb-2">Auto Fetch</h2>
-        <p className="text-xs text-gray-500">
-          Papers are automatically fetched daily at 08:00.
+        <div className="flex items-center gap-2 mb-3">
+          <Clock className="w-4 h-4 text-gray-500" />
+          <h2 className="text-sm font-medium text-gray-900">Auto Fetch Schedule</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Configure when to automatically fetch new papers every day.
+        </p>
+
+        <div className="flex items-end gap-4">
+          <div className="flex items-center gap-2">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Hour</label>
+              <select
+                value={schedulerHour}
+                onChange={(e) => setSchedulerHour(parseInt(e.target.value))}
+                className="px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i.toString().padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="text-sm text-gray-500 pb-1">:</span>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Minute</label>
+              <select
+                value={schedulerMinute}
+                onChange={(e) => setSchedulerMinute(parseInt(e.target.value))}
+                className="px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+              >
+                {Array.from({ length: 60 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i.toString().padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 pb-1">
+            <input
+              type="checkbox"
+              checked={schedulerEnabled}
+              onChange={(e) => setSchedulerEnabled(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <span className="text-sm text-gray-700">Enabled</span>
+          </label>
+
+          <button
+            onClick={handleSaveScheduler}
+            disabled={savingScheduler}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 disabled:opacity-50"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {savingScheduler ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-400 mt-3">
+          {schedulerEnabled
+            ? `Papers will be fetched daily at ${formatTime(schedulerHour, schedulerMinute)}`
+            : 'Auto fetch is disabled'}
         </p>
       </div>
 
