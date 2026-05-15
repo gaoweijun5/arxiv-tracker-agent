@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  color: #111827;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Base styles */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Table styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #F3F4F6;
+  font-size: 14px;
+}
+
+tr:hover td {
+  background-color: #F9FAFB;
+}
+
+/* Code */
+code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+  background: #F3F4F6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+pre {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+  background: #1F2937;
+  color: #E5E7EB;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+}

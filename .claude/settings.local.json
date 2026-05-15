@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:info.arxiv.org)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
