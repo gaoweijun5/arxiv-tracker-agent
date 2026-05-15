@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Search, ChevronLeft, ChevronRight, Trash2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Trash2, ExternalLink, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react'
 import { papersApi } from '../../services/api'
 import type { Paper, PaperListResponse } from '../../types'
 import { format } from 'date-fns'
@@ -16,10 +16,12 @@ export default function PapersPage() {
   const pageSize = 20
   const isRead = searchParams.get('unread') === 'true' ? false : undefined
   const isBookmarked = searchParams.get('bookmarked') === 'true' ? true : undefined
+  const sortBy = searchParams.get('sort_by') || 'created_at'
+  const sortOrder = searchParams.get('sort_order') || 'desc'
 
   useEffect(() => {
     loadPapers()
-  }, [page, isRead, isBookmarked])
+  }, [page, isRead, isBookmarked, sortBy, sortOrder])
 
   const loadPapers = async () => {
     setLoading(true)
@@ -29,8 +31,8 @@ export default function PapersPage() {
         page_size: pageSize,
         is_read: isRead,
         is_bookmarked: isBookmarked,
-        sort_by: 'created_at',
-        sort_order: 'desc',
+        sort_by: sortBy,
+        sort_order: sortOrder,
       })
       setPapers(data.papers)
       setTotal(data.total)
@@ -39,6 +41,29 @@ export default function PapersPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSort = (field: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (sortBy === field) {
+      // Toggle order
+      newParams.set('sort_order', sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New field, default to desc
+      newParams.set('sort_by', field)
+      newParams.set('sort_order', 'desc')
+    }
+    newParams.set('page', '1')
+    setSearchParams(newParams)
+  }
+
+  const renderSortIcon = (field: string) => {
+    if (sortBy !== field) {
+      return <ChevronUp className="w-3 h-3 text-gray-300" />
+    }
+    return sortOrder === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-gray-600" />
+      : <ChevronDown className="w-3 h-3 text-gray-600" />
   }
 
   const handleToggleBookmark = async (paper: Paper) => {
@@ -94,7 +119,7 @@ export default function PapersPage() {
       <div className="flex items-center gap-2 mb-4">
         <div className="flex items-center bg-white border border-gray-200 rounded-md overflow-hidden">
           <Link
-            to="/papers"
+            to={`/papers?sort_by=${sortBy}&sort_order=${sortOrder}`}
             className={`px-3 py-1.5 text-xs font-medium ${
               !isRead && !isBookmarked
                 ? 'bg-gray-900 text-white'
@@ -104,7 +129,7 @@ export default function PapersPage() {
             All
           </Link>
           <Link
-            to="/papers?unread=true"
+            to={`/papers?unread=true&sort_by=${sortBy}&sort_order=${sortOrder}`}
             className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
               isRead === false
                 ? 'bg-gray-900 text-white'
@@ -114,7 +139,7 @@ export default function PapersPage() {
             Unread
           </Link>
           <Link
-            to="/papers?bookmarked=true"
+            to={`/papers?bookmarked=true&sort_by=${sortBy}&sort_order=${sortOrder}`}
             className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
               isBookmarked
                 ? 'bg-gray-900 text-white'
@@ -140,9 +165,25 @@ export default function PapersPage() {
             <thead>
               <tr className="bg-gray-50">
                 <th className="w-8"></th>
-                <th>Title</th>
+                <th>
+                  <button
+                    onClick={() => handleSort('title')}
+                    className="inline-flex items-center gap-1 hover:text-gray-900"
+                  >
+                    Title
+                    {renderSortIcon('title')}
+                  </button>
+                </th>
                 <th className="w-24">Date</th>
-                <th className="w-20">Score</th>
+                <th className="w-20">
+                  <button
+                    onClick={() => handleSort('relevance_score')}
+                    className="inline-flex items-center gap-1 hover:text-gray-900"
+                  >
+                    Score
+                    {renderSortIcon('relevance_score')}
+                  </button>
+                </th>
                 <th className="w-20">Actions</th>
               </tr>
             </thead>
@@ -230,7 +271,11 @@ export default function PapersPage() {
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setSearchParams({ page: String(page - 1) })}
+              onClick={() => {
+                const newParams = new URLSearchParams(searchParams)
+                newParams.set('page', String(page - 1))
+                setSearchParams(newParams)
+              }}
               disabled={page <= 1}
               className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -240,7 +285,11 @@ export default function PapersPage() {
               {page} / {totalPages}
             </span>
             <button
-              onClick={() => setSearchParams({ page: String(page + 1) })}
+              onClick={() => {
+                const newParams = new URLSearchParams(searchParams)
+                newParams.set('page', String(page + 1))
+                setSearchParams(newParams)
+              }}
               disabled={page >= totalPages}
               className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
