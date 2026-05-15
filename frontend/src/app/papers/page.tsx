@@ -16,7 +16,7 @@ export default function PapersPage() {
   const pageSize = 20
   const isRead = searchParams.get('unread') === 'true' ? false : undefined
   const isBookmarked = searchParams.get('bookmarked') === 'true' ? true : undefined
-  const sortBy = searchParams.get('sort_by') || 'created_at'
+  const sortBy = searchParams.get('sort_by') || 'published_date'
   const sortOrder = searchParams.get('sort_order') || 'desc'
 
   useEffect(() => {
@@ -165,16 +165,16 @@ export default function PapersPage() {
             <thead>
               <tr className="bg-gray-50">
                 <th className="w-8"></th>
-                <th>
+                <th>Title</th>
+                <th className="w-24">
                   <button
-                    onClick={() => handleSort('title')}
+                    onClick={() => handleSort('published_date')}
                     className="inline-flex items-center gap-1 hover:text-gray-900"
                   >
-                    Title
-                    {renderSortIcon('title')}
+                    Date
+                    {renderSortIcon('published_date')}
                   </button>
                 </th>
-                <th className="w-24">Date</th>
                 <th className="w-20">
                   <button
                     onClick={() => handleSort('relevance_score')}
