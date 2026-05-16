@@ -202,9 +202,13 @@ export const systemApi = {
     return data
   },
 
-  getFetchLogs: async (limit?: number): Promise<FetchLog[]> => {
-    const { data } = await api.get('/system/fetch-logs', { params: { limit } })
+  getFetchLogs: async (limit?: number, page?: number): Promise<{ logs: FetchLog[]; total: number; page: number; page_size: number }> => {
+    const { data } = await api.get('/system/fetch-logs', { params: { limit, page } })
     return data
+  },
+
+  deleteFetchLog: async (logId: number): Promise<void> => {
+    await api.delete(`/system/fetch-logs/${logId}`)
   },
 
   getSchedulerConfig: async (): Promise<{ hour: number; minute: number; is_enabled: boolean }> => {

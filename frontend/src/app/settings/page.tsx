@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, CheckCircle, XCircle, Clock, Save } from 'lucide-react'
+import { Search, CheckCircle, XCircle, Clock, Save, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { systemApi } from '../../services/api'
 import type { FetchLog } from '../../types'
 import { format } from 'date-fns'
@@ -8,8 +8,12 @@ import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
   const [fetchLogs, setFetchLogs] = useState<FetchLog[]>([])
+  const [logTotal, setLogTotal] = useState(0)
+  const [logPage, setLogPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [showFetchModal, setShowFetchModal] = useState(false)
+
+  const pageSize = 10
 
   // Scheduler config
   const [schedulerHour, setSchedulerHour] = useState(8)
@@ -20,12 +24,14 @@ export default function SettingsPage() {
   useEffect(() => {
     loadFetchLogs()
     loadSchedulerConfig()
-  }, [])
+  }, [logPage])
 
   const loadFetchLogs = async () => {
+    setLoading(true)
     try {
-      const logs = await systemApi.getFetchLogs(20)
-      setFetchLogs(logs)
+      const data = await systemApi.getFetchLogs(pageSize, logPage)
+      setFetchLogs(data.logs)
+      setLogTotal(data.total)
     } catch (error) {
       console.error('Failed to load fetch logs:', error)
     } finally {
@@ -56,9 +62,22 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDeleteLog = async (logId: number) => {
+    try {
+      await systemApi.deleteFetchLog(logId)
+      setFetchLogs((prev) => prev.filter((l) => l.id !== logId))
+      setLogTotal((prev) => prev - 1)
+      toast.success('Log deleted')
+    } catch (error) {
+      toast.error('Failed to delete log')
+    }
+  }
+
   const formatTime = (hour: number, minute: number) => {
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
   }
+
+  const totalLogPages = Math.ceil(logTotal / pageSize)
 
   return (
     <div className="space-y-4">
@@ -155,8 +174,9 @@ export default function SettingsPage() {
 
       {/* Fetch History */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-sm font-medium text-gray-900">Fetch History</h2>
+          <span className="text-xs text-gray-400">{logTotal} total</span>
         </div>
 
         {loading ? (
@@ -166,56 +186,93 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-500">No fetch history</p>
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr className="bg-gray-50">
-                <th>Time</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Found</th>
-                <th>Relevant</th>
-                <th>Topics</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fetchLogs.map((log) => (
-                <tr key={log.id}>
-                  <td className="text-xs text-gray-600">
-                    {log.fetch_date
-                      ? format(new Date(log.fetch_date), 'MMM d, HH:mm')
-                      : '-'}
-                  </td>
-                  <td>
-                    <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
-                      log.source === 'auto'
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {log.source === 'auto' ? 'Auto' : 'Manual'}
-                    </span>
-                  </td>
-                  <td>
-                    {log.status === 'success' ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                        <CheckCircle className="w-3 h-3" />
-                        Success
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-red-600">
-                        <XCircle className="w-3 h-3" />
-                        Failed
-                      </span>
-                    )}
-                  </td>
-                  <td className="text-xs text-gray-600">{log.papers_found}</td>
-                  <td className="text-xs text-gray-600">{log.papers_relevant}</td>
-                  <td className="text-xs text-gray-500 max-w-xs truncate">
-                    {log.categories_fetched?.join(', ') || '-'}
-                  </td>
+          <>
+            <table>
+              <thead>
+                <tr className="bg-gray-50">
+                  <th>Time</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Found</th>
+                  <th>Relevant</th>
+                  <th>Topics</th>
+                  <th className="w-12"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fetchLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="text-xs text-gray-600">
+                      {log.fetch_date
+                        ? format(new Date(log.fetch_date), 'MMM d, HH:mm')
+                        : '-'}
+                    </td>
+                    <td>
+                      <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
+                        log.source === 'auto'
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {log.source === 'auto' ? 'Auto' : 'Manual'}
+                      </span>
+                    </td>
+                    <td>
+                      {log.status === 'success' ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                          <CheckCircle className="w-3 h-3" />
+                          Success
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                          <XCircle className="w-3 h-3" />
+                          Failed
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-xs text-gray-600">{log.papers_found}</td>
+                    <td className="text-xs text-gray-600">{log.papers_relevant}</td>
+                    <td className="text-xs text-gray-500 max-w-xs truncate">
+                      {log.categories_fetched?.join(', ') || '-'}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleDeleteLog(log.id)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {totalLogPages > 1 && (
+              <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  Page {logPage} of {totalLogPages}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+                    disabled={logPage <= 1}
+                    className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))}
+                    disabled={logPage >= totalLogPages}
+                    className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

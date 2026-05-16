@@ -204,29 +204,54 @@ async def list_interests_for_fetch(db: AsyncSession = Depends(get_db)):
 
 @router.get("/fetch-logs")
 async def get_fetch_logs(
-    limit: int = Query(10, ge=1, le=50),
+    limit: int = Query(10, ge=1, le=100),
+    page: int = Query(1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get recent fetch logs."""
+    """Get recent fetch logs with pagination."""
+    from sqlalchemy import func
+
+    # Get total count
+    total = (await db.execute(select(func.count(FetchLog.id)))).scalar() or 0
+
+    # Get paginated results
+    offset = (page - 1) * limit
     result = await db.execute(
-        select(FetchLog).order_by(FetchLog.fetch_date.desc()).limit(limit)
+        select(FetchLog).order_by(FetchLog.fetch_date.desc()).offset(offset).limit(limit)
     )
     logs = result.scalars().all()
 
-    return [
-        {
-            "id": log.id,
-            "fetch_date": log.fetch_date.strftime("%Y-%m-%dT%H:%M:%SZ") if log.fetch_date else None,
-            "source": getattr(log, "source", "manual") or "manual",
-            "categories_fetched": log.categories_fetched,
-            "papers_found": log.papers_found,
-            "papers_relevant": log.papers_relevant,
-            "papers_downloaded": log.papers_downloaded,
-            "status": log.status,
-            "error_message": log.error_message,
-        }
-        for log in logs
-    ]
+    return {
+        "logs": [
+            {
+                "id": log.id,
+                "fetch_date": log.fetch_date.strftime("%Y-%m-%dT%H:%M:%SZ") if log.fetch_date else None,
+                "source": getattr(log, "source", "manual") or "manual",
+                "categories_fetched": log.categories_fetched,
+                "papers_found": log.papers_found,
+                "papers_relevant": log.papers_relevant,
+                "papers_downloaded": log.papers_downloaded,
+                "status": log.status,
+                "error_message": log.error_message,
+            }
+            for log in logs
+        ],
+        "total": total,
+        "page": page,
+        "page_size": limit,
+    }
+
+
+@router.delete("/fetch-logs/{log_id}")
+async def delete_fetch_log(log_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a fetch log entry."""
+    result = await db.execute(select(FetchLog).where(FetchLog.id == log_id))
+    log = result.scalar_one_or_none()
+    if not log:
+        raise HTTPException(status_code=404, detail="Fetch log not found")
+    await db.delete(log)
+    await db.commit()
+    return {"message": "Fetch log deleted"}
 
 
 @router.get("/health")
