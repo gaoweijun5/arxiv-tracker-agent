@@ -182,28 +182,17 @@ async def dismiss_recommendation(rec_id: int, db: AsyncSession = Depends(get_db)
 
 async def run_refresh_workflow(interests_data: list[dict]):
     """Background task to refresh recommendations."""
-    from backend.agents import get_paper_workflow
+    from backend.agents.paper_agent import run_paper_agent
     from loguru import logger
 
     logger.info("Starting background refresh workflow...")
 
-    workflow = get_paper_workflow()
-    state = {
-        "user_interests": interests_data,
-        "categories": [],
-        "keywords": [],
-        "fetched_papers": [],
-        "analyzed_papers": [],
-        "relevant_papers": [],
-        "recommendations": [],
-        "messages": [],
-        "daily_digest": "",
-        "error": None,
-    }
-
     try:
-        result = await workflow.ainvoke(state)
-        logger.info(f"Refresh completed: {len(result.get('recommendations', []))} recommendations")
+        result = await run_paper_agent(
+            interests_data=interests_data,
+            task_id=None,
+        )
+        logger.info(f"Refresh completed: {result.get('papers_saved', 0)} papers saved")
     except Exception as e:
         logger.error(f"Refresh failed: {e}")
 

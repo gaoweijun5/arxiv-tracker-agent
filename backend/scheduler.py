@@ -1,5 +1,6 @@
 """Scheduler for daily paper fetching and recommendations."""
 
+from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
@@ -16,14 +17,13 @@ async def daily_paper_fetch():
 
     try:
         from backend.models.database import get_session_factory, UserInterest, FetchLog
-        from backend.agents import get_paper_workflow
+        from backend.agents.paper_agent import run_paper_agent
         from sqlalchemy import select
         from datetime import datetime
 
         factory = get_session_factory()
 
         async with factory() as session:
-            # Get active interests
             result = await session.execute(
                 select(UserInterest).where(UserInterest.is_active == True)
             )
@@ -33,33 +33,24 @@ async def daily_paper_fetch():
                 logger.warning("No active interests configured")
                 return
 
-            # Run the paper workflow
-            workflow = get_paper_workflow()
-            state = {
-                "user_interests": [i.to_dict() for i in interests],
-                "categories": [],
-                "keywords": [],
-                "fetched_papers": [],
-                "analyzed_papers": [],
-                "relevant_papers": [],
-                "recommendations": [],
-                "messages": [],
-                "daily_digest": "",
-                "error": None,
-            }
-
-            result = await workflow.ainvoke(state)
+            # Run the autonomous paper agent
+            agent_result = await run_paper_agent(
+                interests_data=[i.to_dict() for i in interests],
+                days_back=7,
+                max_results=30,
+                task_id=None,
+            )
 
             # Log the fetch
             log = FetchLog(
                 fetch_date=datetime.utcnow(),
                 source="auto",
                 categories_fetched=[i.topic for i in interests],
-                papers_found=len(result.get("fetched_papers", [])),
-                papers_relevant=len(result.get("relevant_papers", [])),
-                papers_downloaded=len([p for p in result.get("relevant_papers", []) if p.get("is_downloaded")]),
-                status="success" if not result.get("error") else "failed",
-                error_message=result.get("error"),
+                papers_found=agent_result.get("papers_found", 0),
+                papers_relevant=agent_result.get("papers_relevant", 0),
+                papers_downloaded=agent_result.get("papers_saved", 0),
+                status=agent_result.get("status", "success"),
+                error_message=agent_result.get("error"),
             )
             session.add(log)
             await session.commit()

@@ -77,36 +77,20 @@ async def run_fetch_workflow(
     max_results: int = 30,
     task_id: str = None,
 ):
-    """Background task to run the fetch workflow with progress updates."""
-    from backend.agents import get_paper_workflow
+    """Background task to run the autonomous paper agent."""
+    from backend.agents.paper_agent import run_paper_agent
     from backend.models.database import get_session_factory, FetchLog
-    from backend.api.websocket import send_progress, send_complete, send_error
+    from backend.api.websocket import send_complete, send_error
 
-    logger.info(f"Starting fetch workflow (days_back={days_back}, max_results={max_results})")
-
-    workflow = get_paper_workflow()
-    state = {
-        "user_interests": interests_data,
-        "categories": [],
-        "keywords": [],
-        "fetched_papers": [],
-        "analyzed_papers": [],
-        "relevant_papers": [],
-        "recommendations": [],
-        "messages": [],
-        "daily_digest": "",
-        "error": None,
-        "days_back": days_back,
-        "max_results": max_results,
-        "task_id": task_id,
-    }
+    logger.info(f"Starting paper agent (days_back={days_back}, max_results={max_results})")
 
     try:
-        # Send progress: Starting
-        if task_id:
-            await send_progress(task_id, "start", 0, "Starting paper fetch...")
-
-        result = await workflow.ainvoke(state)
+        result = await run_paper_agent(
+            interests_data=interests_data,
+            days_back=days_back,
+            max_results=max_results,
+            task_id=task_id,
+        )
 
         # Log the fetch
         factory = get_session_factory()
@@ -115,33 +99,32 @@ async def run_fetch_workflow(
                 fetch_date=datetime.utcnow(),
                 source="manual",
                 categories_fetched=[i.get("topic") for i in interests_data],
-                papers_found=len(result.get("fetched_papers", [])),
-                papers_relevant=len(result.get("relevant_papers", [])),
-                papers_downloaded=len([p for p in result.get("relevant_papers", []) if p.get("is_downloaded")]),
-                status="success",
+                papers_found=result.get("papers_found", 0),
+                papers_relevant=result.get("papers_relevant", 0),
+                papers_downloaded=result.get("papers_saved", 0),
+                status=result.get("status", "success"),
+                error_message=result.get("error"),
             )
             db.add(log)
             await db.commit()
 
-        logger.info(f"Fetch completed: {log.papers_found} found, {log.papers_relevant} relevant")
+        logger.info(f"Agent completed: {result.get('papers_found', 0)} found, {result.get('papers_saved', 0)} saved")
 
         # Send completion
         if task_id:
             await send_complete(task_id, {
-                "papers_found": log.papers_found,
-                "papers_relevant": log.papers_relevant,
-                "papers_downloaded": log.papers_downloaded,
-                "status": "success",
+                "papers_found": result.get("papers_found", 0),
+                "papers_relevant": result.get("papers_relevant", 0),
+                "papers_downloaded": result.get("papers_saved", 0),
+                "status": result.get("status", "success"),
             })
 
     except Exception as e:
         logger.error(f"Fetch failed: {e}")
 
-        # Send error
         if task_id:
             await send_error(task_id, str(e))
 
-        # Log failure
         factory = get_session_factory()
         async with factory() as db:
             log = FetchLog(
