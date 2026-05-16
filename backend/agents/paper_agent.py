@@ -122,9 +122,11 @@ analyze the most promising ones, and download/save the best results."""
     await _send_progress("start", 5, "Starting paper agent...")
 
     try:
-        result = await agent.ainvoke({
-            "messages": [("user", user_message)]
-        })
+        import asyncio
+        result = await asyncio.wait_for(
+            agent.ainvoke({"messages": [("user", user_message)]}),
+            timeout=300,  # 5 minute timeout
+        )
 
         # Extract final AI message
         final_message = ""

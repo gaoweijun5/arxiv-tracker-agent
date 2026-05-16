@@ -25,12 +25,15 @@ def get_stats() -> dict:
 
 async def _send_progress(step: str, progress: int, message: str):
     task_id = _task_id_ctx.get()
+    logger.debug(f"Progress: step={step}, progress={progress}, task_id={task_id}, msg={message}")
     if task_id:
         try:
             from backend.api.websocket import send_progress
             await send_progress(task_id, step, progress, message)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to send progress: {e}")
+    else:
+        logger.warning(f"No task_id for progress: {step} {progress} {message}")
 
 
 @tool
@@ -123,6 +126,7 @@ async def search_arxiv(
     max_results: int = 30,
 ) -> str:
     """Search arXiv for recent papers matching keywords and categories. Returns a list of papers with title, arxiv_id, abstract snippet, authors, and categories."""
+    logger.info(f"TOOL search_arxiv: keywords={keywords}, categories={categories}, days_back={days_back}")
     try:
         await _send_progress("fetch", 15, f"Searching arXiv: {', '.join(keywords[:3])}...")
         from backend.services.arxiv_service import get_arxiv_service
@@ -163,6 +167,7 @@ async def search_arxiv(
 @tool
 async def check_paper_exists(arxiv_id: str) -> str:
     """Check if a paper already exists in the database. Use this before analyzing to skip duplicates."""
+    logger.info(f"TOOL check_paper_exists: {arxiv_id}")
     try:
         from backend.models.database import get_session_factory, Paper
         from sqlalchemy import select
@@ -183,6 +188,7 @@ async def check_paper_exists(arxiv_id: str) -> str:
 @tool
 async def check_relevance(title: str, abstract: str, categories: list[str]) -> str:
     """Quickly check if a paper is relevant to the user's interests. Returns a relevance score (0-1). Use this before full analysis to filter out irrelevant papers."""
+    logger.info(f"TOOL check_relevance: {title[:50]}...")
     try:
         from backend.services.llm_service import get_llm_service
         from backend.models.database import get_session_factory, UserInterest
@@ -216,6 +222,7 @@ async def analyze_paper(
     categories: list[str],
 ) -> str:
     """Fully analyze a paper: generate AI summary, key findings, methodology, and relevance score. Use this for papers that pass the relevance check."""
+    logger.info(f"TOOL analyze_paper: {arxiv_id} - {title[:50]}...")
     try:
         await _send_progress("analyze", 40, f"Analyzing: {title[:40]}...")
         from backend.services.llm_service import get_llm_service
@@ -260,6 +267,7 @@ async def download_and_save_paper(
     relevance_reason: str,
 ) -> str:
     """Download the PDF and save a paper to the database. Only call this for papers with relevance_score >= 0.6."""
+    logger.info(f"TOOL download_and_save_paper: {arxiv_id} - {title[:50]}...")
     try:
         from backend.models.database import get_session_factory, Paper, PaperRecommendation
         from backend.services.vector_store import get_vector_store
@@ -280,22 +288,31 @@ async def download_and_save_paper(
             if result.scalar_one_or_none():
                 return json.dumps({"status": "exists", "arxiv_id": arxiv_id, "message": "Paper already in database"})
 
-            # Download PDF
+            # Download PDF directly using pdf_url
             pdf_path = None
             full_text = None
             is_downloaded = False
 
             if pdf_url:
                 try:
-                    arxiv_service = get_arxiv_service()
-                    papers = await arxiv_service.search_papers(keywords=[arxiv_id], max_results=1)
-                    if papers:
-                        pdf_path = await arxiv_service.download_pdf(papers[0])
-                        if pdf_path:
-                            is_downloaded = True
-                            full_text = pdf_service.extract_text(pdf_path)
+                    from backend.core.config import get_settings
+                    settings = get_settings()
+                    settings.papers_dir.mkdir(parents=True, exist_ok=True)
+                    filename = f"{arxiv_id.replace('/', '_')}.pdf"
+                    pdf_path = settings.papers_dir / filename
+
+                    if not pdf_path.exists():
+                        import httpx as httpx_lib
+                        async with httpx_lib.AsyncClient() as client:
+                            response = await client.get(pdf_url, follow_redirects=True, timeout=60.0)
+                            response.raise_for_status()
+                            pdf_path.write_bytes(response.content)
+
+                    is_downloaded = True
+                    full_text = pdf_service.extract_text(pdf_path)
                 except Exception as e:
                     logger.warning(f"PDF download failed for {arxiv_id}: {e}")
+                    is_downloaded = False
 
             # Parse published_date
             try:
