@@ -1,5 +1,6 @@
 """ArXiv paper fetching and processing service."""
 
+import asyncio
 import arxiv
 import httpx
 from datetime import datetime, timedelta
@@ -56,19 +57,21 @@ class ArxivService:
             sort_order=arxiv.SortOrder.Descending,
         )
 
-        papers = []
         cutoff_date = datetime.now() - timedelta(days=days_back)
 
-        try:
-            for result in self.client.results(search):
-                # Filter by date (with timezone handling)
-                pub_date = result.published.replace(tzinfo=None)
-                if pub_date < cutoff_date:
-                    continue
-                papers.append(result)
-        except Exception as e:
-            logger.warning(f"Error during arXiv search: {e}")
-            # Return whatever papers we have so far
+        def _search_sync():
+            papers = []
+            try:
+                for result in self.client.results(search):
+                    pub_date = result.published.replace(tzinfo=None)
+                    if pub_date < cutoff_date:
+                        continue
+                    papers.append(result)
+            except Exception as e:
+                logger.warning(f"Error during arXiv search: {e}")
+            return papers
+
+        papers = await asyncio.to_thread(_search_sync)
 
         logger.info(f"Found {len(papers)} papers from last {days_back} days")
         return papers
