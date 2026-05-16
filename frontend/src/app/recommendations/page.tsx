@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { RefreshCw, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { recommendationsApi } from '../../services/api'
 import type { Recommendation } from '../../types'
 import { format } from 'date-fns'
@@ -9,7 +9,6 @@ import toast from 'react-hot-toast'
 export default function RecommendationsPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     loadRecommendations()
@@ -30,19 +29,6 @@ export default function RecommendationsPage() {
     }
   }
 
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    try {
-      await recommendationsApi.refresh()
-      toast.success('Refresh started')
-      setTimeout(() => loadRecommendations(), 5000)
-    } catch (error) {
-      toast.error('Failed to refresh')
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
   const handleDismiss = async (rec: Recommendation) => {
     try {
       await recommendationsApi.dismiss(rec.id)
@@ -60,14 +46,6 @@ export default function RecommendationsPage() {
           <h1 className="text-xl font-semibold text-gray-900">Recommendations</h1>
           <p className="text-sm text-gray-500">Papers matched to your interests</p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
       </div>
 
       {/* Recommendations Table */}
