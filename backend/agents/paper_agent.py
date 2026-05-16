@@ -61,8 +61,11 @@ def _create_agent():
         analyze_paper, download_and_save_paper,
     ]
 
+    # Disable parallel tool calls to avoid message ordering issues with DeepSeek
+    llm_with_tools = llm.bind_tools(tools, parallel_tool_calls=False)
+
     return create_react_agent(
-        model=llm,
+        model=llm_with_tools,
         tools=tools,
         prompt=SystemMessage(content=AGENT_SYSTEM_PROMPT),
     )
