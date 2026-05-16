@@ -60,15 +60,24 @@ class ArxivService:
         cutoff_date = datetime.now() - timedelta(days=days_back)
 
         def _search_sync():
-            papers = []
-            try:
-                for result in self.client.results(search):
-                    pub_date = result.published.replace(tzinfo=None)
-                    if pub_date < cutoff_date:
-                        continue
-                    papers.append(result)
-            except Exception as e:
-                logger.warning(f"Error during arXiv search: {e}")
+            import time
+            for attempt in range(3):
+                papers = []
+                try:
+                    for result in self.client.results(search):
+                        pub_date = result.published.replace(tzinfo=None)
+                        if pub_date < cutoff_date:
+                            continue
+                        papers.append(result)
+                    return papers
+                except Exception as e:
+                    if "429" in str(e) and attempt < 2:
+                        wait = (attempt + 1) * 5
+                        logger.warning(f"arXiv rate limited, retrying in {wait}s...")
+                        time.sleep(wait)
+                    else:
+                        logger.warning(f"Error during arXiv search: {e}")
+                        return papers
             return papers
 
         papers = await asyncio.to_thread(_search_sync)
