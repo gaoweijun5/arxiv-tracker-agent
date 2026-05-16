@@ -2,18 +2,20 @@
 
 > **If you find this project helpful, please give it a ⭐ Star! Your support is my motivation to keep improving.**
 
-AI-powered arXiv paper tracking and recommendation system built with LangChain, LangGraph, and RAG.
+AI-powered arXiv paper tracking and recommendation system with an autonomous LangGraph ReAct agent.
 
 English | [中文](README_CN.md)
 
 ## Features
 
+- **Autonomous Paper Agent** - ReAct agent that independently decides search strategy, analyzes papers, and saves the best ones
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
 - **AI Summarization** - Generate summaries, key findings, and Chinese translations using DeepSeek
 - **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
-- **RAG Q&A** - Ask questions about papers with context-aware answers
+- **Full-text Q&A** - Ask questions about papers with full PDF content as context
 - **Real-time Progress** - WebSocket-powered live updates during paper fetching
-- **Paper Management** - Bookmark, mark as read, filter, and delete papers
+- **Paper Management** - Bookmark, mark as read, filter, batch delete papers
+- **LangSmith Observability** - Full tracing of agent decisions and LLM calls
 
 ## Tech Stack
 
@@ -25,6 +27,7 @@ English | [中文](README_CN.md)
 | **Vector Store** | ChromaDB |
 | **Database** | SQLite + SQLAlchemy |
 | **Frontend** | React, TypeScript, Tailwind CSS |
+| **Observability** | LangSmith |
 | **Package Manager** | uv (Python), npm (Node) |
 
 ## Quick Start
@@ -69,6 +72,11 @@ LLM_MODEL=deepseek-v4-flash
 EMBEDDING_API_KEY=sk-your-dashscope-key
 EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
 EMBEDDING_MODEL=text-embedding-v4
+
+# LangSmith Tracing (optional)
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your-langsmith-key
+LANGSMITH_PROJECT=your-project-name
 ```
 
 ### Run
@@ -95,12 +103,15 @@ Click **Fetch Papers** on Dashboard or Settings page:
 - Select specific topics to search
 - Choose search period (1-30 days)
 - Set max results per topic
+- The autonomous agent will search, analyze, and save papers automatically
 - Watch real-time progress via WebSocket
 
 ### 3. Browse Papers
 
 **Papers** page shows all fetched papers in a table:
 - Filter by All / Unread / Bookmarked
+- Sort by Date or Score
+- Select multiple papers for batch delete
 - View AI-generated summaries
 - Click to read full details and ask questions
 
@@ -108,18 +119,26 @@ Click **Fetch Papers** on Dashboard or Settings page:
 
 On paper detail page, click **Chat** to open the Q&A sidebar:
 - Ask questions about the paper
-- AI answers based on paper content using RAG
+- AI reads the full PDF and answers based on complete content
 - Conversation history is saved
+- Clear chat history with the trash icon
 
 ## API Endpoints
 
 ### Papers
-- `GET /api/v1/papers` - List papers
+- `GET /api/v1/papers` - List papers (supports filtering and sorting)
 - `GET /api/v1/papers/{id}` - Get paper details
 - `DELETE /api/v1/papers/{id}` - Delete paper
+- `POST /api/v1/papers/batch-delete` - Batch delete papers by IDs
 - `PUT /api/v1/papers/{id}/read` - Mark as read
 - `PUT /api/v1/papers/{id}/bookmark` - Toggle bookmark
+- `POST /api/v1/papers/{id}/download` - Download PDF for Q&A
 - `POST /api/v1/papers/search` - Semantic search
+
+### Conversations
+- `POST /api/v1/conversations/ask` - Ask a question about a paper
+- `GET /api/v1/conversations/{paper_id}` - Get conversation history
+- `DELETE /api/v1/conversations/paper/{paper_id}` - Clear chat history
 
 ### Interests
 - `GET /api/v1/interests` - List interests
@@ -135,7 +154,9 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 ### System
 - `POST /api/v1/system/fetch` - Fetch papers with options
 - `GET /api/v1/system/stats` - System statistics
-- `GET /api/v1/system/fetch-logs` - Fetch history
+- `GET /api/v1/system/fetch-logs` - Fetch history (with source: manual/auto)
+- `GET /api/v1/system/scheduler` - Get scheduler config
+- `PUT /api/v1/system/scheduler` - Update scheduler config
 
 ### WebSocket
 - `ws://localhost:8000/ws/progress/{task_id}` - Real-time progress
@@ -161,17 +182,39 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
 │ - QA Agent    │ │ - DeepSeek    │ │ - ChromaDB    │
-│               │ │ - DashScope   │ │               │
+│ (ReAct)       │ │ - DashScope   │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │  LangSmith  │
+                   │  (Tracing)  │
+                   └─────────────┘
 ```
 
-### LangGraph Workflow
+### Paper Agent (ReAct)
+
+The Paper Agent uses LangGraph's `create_react_agent` to autonomously discover, analyze, and save papers:
 
 ```
-Fetch Papers → Analyze Papers → Filter Relevant → Generate Recommendations → Save to Database
+User: "Find papers matching my interests"
+  │
+  ▼
+┌─────────────────────────────────────────────┐
+│            ReAct Loop (LLM-driven)           │
+│                                              │
+│  1. get_user_interests() → understand topics │
+│  2. get_user_feedback_summary() → learn prefs│
+│  3. search_arxiv() → find papers             │
+│  4. check_paper_exists() → skip duplicates   │
+│  5. check_relevance() → quick filter         │
+│  6. analyze_paper() → full analysis          │
+│  7. download_and_save_paper() → save best    │
+│                                              │
+│  LLM decides tool order and adjusts strategy │
+│  based on results (reflection)               │
+└─────────────────────────────────────────────┘
 ```
-
-Each step sends progress updates via WebSocket for real-time UI updates.
 
 ## License
 
