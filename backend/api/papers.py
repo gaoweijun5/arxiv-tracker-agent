@@ -151,27 +151,20 @@ async def set_relevance(
     return {"message": "Relevance updated", "is_relevant": is_relevant}
 
 
-@router.delete("/{paper_id}")
-async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
-    """Delete a paper from database and vector store."""
+async def _delete_paper_full(paper, db):
+    """Delete a paper and all related data."""
     from backend.models.database import PaperRecommendation, Conversation
-
-    result = await db.execute(select(Paper).where(Paper.id == paper_id))
-    paper = result.scalar_one_or_none()
-
-    if not paper:
-        raise HTTPException(status_code=404, detail="Paper not found")
 
     # Delete related recommendations
     recs_result = await db.execute(
-        select(PaperRecommendation).where(PaperRecommendation.paper_id == paper_id)
+        select(PaperRecommendation).where(PaperRecommendation.paper_id == paper.id)
     )
     for rec in recs_result.scalars().all():
         await db.delete(rec)
 
     # Delete related conversations
     convs_result = await db.execute(
-        select(Conversation).where(Conversation.paper_id == paper_id)
+        select(Conversation).where(Conversation.paper_id == paper.id)
     )
     for conv in convs_result.scalars().all():
         await db.delete(conv)
@@ -189,6 +182,37 @@ async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
 
     # Delete from database
     await db.delete(paper)
+
+
+@router.post("/batch-delete")
+async def batch_delete_papers(request: dict, db: AsyncSession = Depends(get_db)):
+    """Delete multiple papers by IDs."""
+    paper_ids = request.get("paper_ids", [])
+    if not paper_ids:
+        raise HTTPException(status_code=400, detail="No paper IDs provided")
+
+    result = await db.execute(select(Paper).where(Paper.id.in_(paper_ids)))
+    papers = result.scalars().all()
+
+    deleted = 0
+    for paper in papers:
+        await _delete_paper_full(paper, db)
+        deleted += 1
+
+    await db.commit()
+    return {"message": f"Deleted {deleted} papers", "deleted": deleted}
+
+
+@router.delete("/{paper_id}")
+async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a paper from database and vector store."""
+    result = await db.execute(select(Paper).where(Paper.id == paper_id))
+    paper = result.scalar_one_or_none()
+
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    await _delete_paper_full(paper, db)
     await db.commit()
 
     return {"message": "Paper deleted", "arxiv_id": paper.arxiv_id}

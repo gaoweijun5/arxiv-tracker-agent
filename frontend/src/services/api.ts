@@ -58,6 +58,11 @@ export const papersApi = {
     await api.delete(`/papers/${id}`)
   },
 
+  batchDelete: async (paperIds: number[]): Promise<{ deleted: number }> => {
+    const { data } = await api.post('/papers/batch-delete', { paper_ids: paperIds })
+    return data
+  },
+
   downloadPdf: async (id: number): Promise<{ message: string; text_length: number; chunks: number }> => {
     const { data } = await api.post(`/papers/${id}/download`)
     return data

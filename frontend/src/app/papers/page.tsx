@@ -11,6 +11,8 @@ export default function PapersPage() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = 20
@@ -21,6 +23,7 @@ export default function PapersPage() {
 
   useEffect(() => {
     loadPapers()
+    setSelected(new Set())
   }, [page, isRead, isBookmarked, sortBy, sortOrder])
 
   const loadPapers = async () => {
@@ -46,10 +49,8 @@ export default function PapersPage() {
   const handleSort = (field: string) => {
     const newParams = new URLSearchParams(searchParams)
     if (sortBy === field) {
-      // Toggle order
       newParams.set('sort_order', sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
-      // New field, default to desc
       newParams.set('sort_by', field)
       newParams.set('sort_order', 'desc')
     }
@@ -64,6 +65,41 @@ export default function PapersPage() {
     return sortOrder === 'asc'
       ? <ChevronUp className="w-3 h-3 text-gray-600" />
       : <ChevronDown className="w-3 h-3 text-gray-600" />
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === papers.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(papers.map((p) => p.id)))
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} selected papers?`)) return
+
+    setDeleting(true)
+    try {
+      const result = await papersApi.batchDelete(Array.from(selected))
+      setPapers((prev) => prev.filter((p) => !selected.has(p.id)))
+      setTotal((prev) => prev - result.deleted)
+      setSelected(new Set())
+      toast.success(`Deleted ${result.deleted} papers`)
+    } catch (error) {
+      toast.error('Failed to delete papers')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleToggleBookmark = async (paper: Paper) => {
@@ -113,6 +149,16 @@ export default function PapersPage() {
           <h1 className="text-xl font-semibold text-gray-900">Papers</h1>
           <p className="text-sm text-gray-500">{total} papers</p>
         </div>
+        {selected.size > 0 && (
+          <button
+            onClick={handleBatchDelete}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {deleting ? 'Deleting...' : `Delete ${selected.size} selected`}
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -164,6 +210,14 @@ export default function PapersPage() {
           <table>
             <thead>
               <tr className="bg-gray-50">
+                <th className="w-8 px-2">
+                  <input
+                    type="checkbox"
+                    checked={papers.length > 0 && selected.size === papers.length}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
                 <th className="w-8"></th>
                 <th>Title</th>
                 <th className="w-24">
@@ -189,7 +243,15 @@ export default function PapersPage() {
             </thead>
             <tbody>
               {papers.map((paper) => (
-                <tr key={paper.id}>
+                <tr key={paper.id} className={selected.has(paper.id) ? 'bg-blue-50' : ''}>
+                  <td className="px-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(paper.id)}
+                      onChange={() => toggleSelect(paper.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
                   <td>
                     <button
                       onClick={() => handleToggleBookmark(paper)}
