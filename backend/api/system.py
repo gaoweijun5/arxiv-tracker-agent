@@ -113,6 +113,7 @@ async def run_fetch_workflow(
         async with factory() as db:
             log = FetchLog(
                 fetch_date=datetime.utcnow(),
+                source="manual",
                 categories_fetched=[i.get("topic") for i in interests_data],
                 papers_found=len(result.get("fetched_papers", [])),
                 papers_relevant=len(result.get("relevant_papers", [])),
@@ -145,6 +146,7 @@ async def run_fetch_workflow(
         async with factory() as db:
             log = FetchLog(
                 fetch_date=datetime.utcnow(),
+                source="manual",
                 categories_fetched=[],
                 papers_found=0,
                 papers_relevant=0,
@@ -231,7 +233,8 @@ async def get_fetch_logs(
     return [
         {
             "id": log.id,
-            "fetch_date": log.fetch_date.isoformat() if log.fetch_date else None,
+            "fetch_date": log.fetch_date.strftime("%Y-%m-%dT%H:%M:%SZ") if log.fetch_date else None,
+            "source": getattr(log, "source", "manual") or "manual",
             "categories_fetched": log.categories_fetched,
             "papers_found": log.papers_found,
             "papers_relevant": log.papers_relevant,

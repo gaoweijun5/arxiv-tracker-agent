@@ -53,6 +53,7 @@ async def daily_paper_fetch():
             # Log the fetch
             log = FetchLog(
                 fetch_date=datetime.utcnow(),
+                source="auto",
                 categories_fetched=[i.topic for i in interests],
                 papers_found=len(result.get("fetched_papers", [])),
                 papers_relevant=len(result.get("relevant_papers", [])),

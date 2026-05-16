@@ -169,6 +169,7 @@ class FetchLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fetch_date = Column(DateTime, nullable=False)
+    source = Column(String(20), default="manual")  # manual, auto
     categories_fetched = Column(JSON, nullable=True)
     papers_found = Column(Integer, default=0)
     papers_relevant = Column(Integer, default=0)

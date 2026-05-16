@@ -170,6 +170,7 @@ export default function SettingsPage() {
             <thead>
               <tr className="bg-gray-50">
                 <th>Time</th>
+                <th>Source</th>
                 <th>Status</th>
                 <th>Found</th>
                 <th>Relevant</th>
@@ -183,6 +184,15 @@ export default function SettingsPage() {
                     {log.fetch_date
                       ? format(new Date(log.fetch_date), 'MMM d, HH:mm')
                       : '-'}
+                  </td>
+                  <td>
+                    <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
+                      log.source === 'auto'
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {log.source === 'auto' ? 'Auto' : 'Manual'}
+                    </span>
                   </td>
                   <td>
                     {log.status === 'success' ? (
