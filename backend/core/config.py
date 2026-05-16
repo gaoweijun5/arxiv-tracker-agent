@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     daily_fetch_hour: int = 8
     daily_fetch_minute: int = 0
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     def get_paper_path(self, arxiv_id: str) -> Path:
         """Get the file path for a downloaded paper."""
