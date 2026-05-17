@@ -16,10 +16,12 @@ from backend.agents.tools import (
 
 AGENT_SYSTEM_PROMPT = """You are an autonomous research paper agent. Your goal is to discover, analyze, and save high-quality academic papers that match the user's research interests.
 
+IMPORTANT: The user has provided specific interests in their message. Use ONLY those interests for searching. Do NOT call get_user_interests() - the interests are already provided.
+
 WORKFLOW:
-1. Call get_user_interests() to understand what the user cares about
+1. Extract the user's interests (topic, keywords, categories) from their message
 2. Call get_user_feedback_summary() to learn from past behavior (what was bookmarked, what was skipped)
-3. Call search_arxiv() with appropriate keywords and categories from the interests
+3. Call search_arxiv() with keywords and categories from the user's provided interests
 4. For each promising paper, call check_paper_exists() to skip duplicates
 5. For new papers, call check_relevance() first as a quick filter
 6. For relevant papers (score >= 0.5), call analyze_paper() for full analysis
