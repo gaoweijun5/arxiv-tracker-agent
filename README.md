@@ -60,7 +60,7 @@ LANGSMITH_PROJECT=Agent
 # === Advanced (defaults are fine) ===
 # DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
 # CHROMA_PERSIST_DIR=./data/vectors
-# ARXIV_MAX_RESULTS=50
+# ARXIV_MAX_RESULTS=50  
 # DAILY_FETCH_HOUR=8
 # DAILY_FETCH_MINUTE=0
 ```
