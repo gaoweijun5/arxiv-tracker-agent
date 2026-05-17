@@ -50,7 +50,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
     try {
       const data = await systemApi.getInterests()
       setInterests(data)
-      setSelectedInterests(data.map((i: Interest) => i.id))
+      setSelectedInterests([])
     } catch (error) {
       console.error('Failed to load interests:', error)
     } finally {
