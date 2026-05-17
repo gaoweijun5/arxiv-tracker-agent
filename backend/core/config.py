@@ -31,10 +31,10 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.3
 
-    # Embedding API (DashScope)
+    # Embedding API (OpenAI-compatible)
     embedding_api_key: str = ""
-    embedding_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    embedding_model: str = "text-embedding-v4"
+    embedding_api_base: str = "https://api.deepseek.com"
+    embedding_model: str = "deepseek-embedding"
 
     # arXiv
     arxiv_max_results: int = 50

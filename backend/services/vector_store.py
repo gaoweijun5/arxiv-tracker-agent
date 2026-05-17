@@ -9,16 +9,16 @@ from loguru import logger
 from backend.core.config import get_settings
 
 
-class DashScopeEmbeddings(Embeddings):
-    """DashScope embedding API wrapper."""
+class OpenAICompatibleEmbeddings(Embeddings):
+    """Embeddings wrapper for any OpenAI-compatible API (DeepSeek, DashScope, OpenAI, etc.)."""
 
     def __init__(self, api_key: str, base_url: str, model: str):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
         self.model = model
 
-    def _call_api(self, texts: List[str]) -> List[List[float]]:
-        """Call DashScope embedding API."""
+    def _call_api(self, texts: List[str]) -> List[List[float]:
+        """Call OpenAI-compatible embedding API."""
         response = httpx.post(
             f"{self.base_url}/embeddings",
             headers={
@@ -40,7 +40,6 @@ class DashScopeEmbeddings(Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed multiple documents."""
-        # DashScope supports batch, process in chunks of 10
         all_embeddings = []
         chunk_size = 10
         for i in range(0, len(texts), chunk_size):
@@ -67,16 +66,16 @@ class VectorStoreService:
 
     @property
     def embeddings(self):
-        """Get embeddings - use DashScope API."""
+        """Get embeddings - use configured embedding API."""
         if VectorStoreService._embeddings is None and not VectorStoreService._initialized:
             VectorStoreService._initialized = True
             try:
-                VectorStoreService._embeddings = DashScopeEmbeddings(
+                VectorStoreService._embeddings = OpenAICompatibleEmbeddings(
                     api_key=self.settings.embedding_api_key,
                     base_url=self.settings.embedding_api_base,
                     model=self.settings.embedding_model,
                 )
-                logger.info(f"Using DashScope embedding API: {self.settings.embedding_model}")
+                logger.info(f"Using embedding API: {self.settings.embedding_model} @ {self.settings.embedding_api_base}")
             except Exception as e:
                 logger.warning(f"Failed to init embedding API: {e}")
                 VectorStoreService._embeddings = None
