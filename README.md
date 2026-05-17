@@ -100,6 +100,12 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 - Conversation history is saved
 - Clear chat history with the trash icon
 
+## Troubleshooting
+
+**Fetch returns 0 papers or fails**
+
+This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. arXiv limits the number of requests from the same IP. If you've been testing frequently, wait 10-30 minutes before trying again. The system will automatically retry on rate limit errors.
+
 ## Architecture
 
 ```
