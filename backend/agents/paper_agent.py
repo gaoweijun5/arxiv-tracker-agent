@@ -149,8 +149,10 @@ analyze the most promising ones, and download/save the best results."""
             "final_message": final_message,
         }
 
-    except Exception as e:
+    except (Exception, BaseException) as e:
         error_msg = str(e) or type(e).__name__
+        if not error_msg or error_msg == "CancelledError":
+            error_msg = "Agent timed out or was cancelled"
         logger.error(f"Paper agent failed: {error_msg}")
         return {
             "status": "failed",

@@ -80,7 +80,10 @@ class ArxivService:
                         return papers
             return papers
 
-        papers = await asyncio.to_thread(_search_sync)
+        papers = await asyncio.wait_for(
+            asyncio.to_thread(_search_sync),
+            timeout=90,
+        )
 
         logger.info(f"Found {len(papers)} papers from last {days_back} days")
         return papers
