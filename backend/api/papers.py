@@ -298,3 +298,65 @@ async def search_papers(
     results = await vector_store.search_similar_papers(query=query, k=k)
 
     return {"results": results, "query": query}
+
+
+@router.get("/{paper_id}/similar")
+async def get_similar_papers(
+    paper_id: int,
+    k: int = Query(5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get papers similar to the given paper using vector search."""
+    # Get the current paper
+    result = await db.execute(select(Paper).where(Paper.id == paper_id))
+    paper = result.scalar_one_or_none()
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    # Search vector store using paper's title + abstract as query
+    vector_store = get_vector_store()
+    query = f"{paper.title}\n\n{paper.abstract}"
+    search_results = await vector_store.search_papers(
+        query=query,
+        k=k + 5,  # fetch extra to account for filtering
+        filter_dict={"type": "paper"},
+    )
+
+    # Filter out current paper and collect arxiv_ids
+    similar_items = []
+    for doc, score in search_results:
+        doc_arxiv_id = doc.metadata.get("arxiv_id", "")
+        if doc_arxiv_id == paper.arxiv_id:
+            continue
+        similar_items.append({"arxiv_id": doc_arxiv_id, "score": score})
+        if len(similar_items) >= k:
+            break
+
+    if not similar_items:
+        return {"papers": [], "total": 0}
+
+    # Fetch full paper info from database
+    arxiv_ids = [item["arxiv_id"] for item in similar_items]
+    db_result = await db.execute(select(Paper).where(Paper.arxiv_id.in_(arxiv_ids)))
+    db_papers = {p.arxiv_id: p for p in db_result.scalars().all()}
+
+    # Build response with similarity scores
+    papers = []
+    for item in similar_items:
+        p = db_papers.get(item["arxiv_id"])
+        if not p:
+            continue
+        papers.append({
+            "id": p.id,
+            "arxiv_id": p.arxiv_id,
+            "title": p.title,
+            "authors": p.authors,
+            "abstract": p.abstract,
+            "ai_summary": p.ai_summary,
+            "relevance_score": p.relevance_score,
+            "is_bookmarked": p.is_bookmarked,
+            "is_read": p.is_read,
+            "similarity_score": round(1 - item["score"], 4),
+        })
+
+    return {"papers": papers, "total": len(papers)}

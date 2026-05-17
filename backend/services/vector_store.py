@@ -17,7 +17,7 @@ class OpenAICompatibleEmbeddings(Embeddings):
         self.base_url = base_url.rstrip('/')
         self.model = model
 
-    def _call_api(self, texts: List[str]) -> List[List[float]:
+    def _call_api(self, texts: List[str]) -> List[List[float]]:
         """Call OpenAI-compatible embedding API."""
         response = httpx.post(
             f"{self.base_url}/embeddings",

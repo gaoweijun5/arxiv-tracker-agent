@@ -16,6 +16,7 @@ export interface Paper {
   is_read: boolean
   is_bookmarked: boolean
   created_at: string | null
+  similarity_score?: number
 }
 
 export interface PaperListResponse {

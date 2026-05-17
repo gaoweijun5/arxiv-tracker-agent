@@ -72,6 +72,11 @@ export const papersApi = {
     const { data } = await api.post('/papers/search', null, { params: { query, k } })
     return data
   },
+
+  getSimilar: async (paperId: number, k?: number): Promise<{ papers: Paper[]; total: number }> => {
+    const { data } = await api.get(`/papers/${paperId}/similar`, { params: { k } })
+    return data
+  },
 }
 
 /** Interests API */

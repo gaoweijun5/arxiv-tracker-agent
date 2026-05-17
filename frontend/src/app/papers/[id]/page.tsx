@@ -16,6 +16,9 @@ export default function PaperDetailPage() {
   const [asking, setAsking] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
+  const [similarPapers, setSimilarPapers] = useState<Paper[]>([])
+  const [loadingSimilar, setLoadingSimilar] = useState(false)
+
   useEffect(() => {
     if (id) {
       loadPaper(parseInt(id))
@@ -34,10 +37,25 @@ export default function PaperDetailPage() {
       if (!paperData.is_read) {
         await papersApi.markRead(paperId)
       }
+
+      // Load similar papers
+      loadSimilarPapers(paperId)
     } catch (error) {
       console.error('Failed to load paper:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadSimilarPapers = async (paperId: number) => {
+    setLoadingSimilar(true)
+    try {
+      const data = await papersApi.getSimilar(paperId, 5)
+      setSimilarPapers(data.papers)
+    } catch (error) {
+      console.error('Failed to load similar papers:', error)
+    } finally {
+      setLoadingSimilar(false)
     }
   }
 
@@ -254,6 +272,59 @@ export default function PaperDetailPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Abstract</h2>
             <p className="text-sm text-gray-700 leading-relaxed">{paper.abstract}</p>
+          </div>
+
+          {/* Similar Papers */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Similar Papers</h2>
+              {similarPapers.length > 0 && (
+                <span className="text-xs text-gray-400">{similarPapers.length} found</span>
+              )}
+            </div>
+
+            {loadingSimilar ? (
+              <div className="flex items-center gap-2 py-4">
+                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                <span className="text-sm text-gray-400">Finding similar papers...</span>
+              </div>
+            ) : similarPapers.length === 0 ? (
+              <p className="text-sm text-gray-400 py-2">No similar papers found in database</p>
+            ) : (
+              <div className="space-y-2">
+                {similarPapers.map((sp) => (
+                  <Link
+                    key={sp.id}
+                    to={`/papers/${sp.id}`}
+                    className="block p-3 border border-gray-100 rounded-lg hover:bg-gray-50 hover:border-gray-200 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      {sp.similarity_score != null && (
+                        <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded mt-0.5">
+                          {Math.round(sp.similarity_score * 100)}%
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 line-clamp-1">{sp.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {sp.authors.slice(0, 3).join(', ')}
+                          {sp.authors.length > 3 && ' et al.'}
+                          {sp.published_date && (
+                            <span className="ml-2">
+                              {format(new Date(sp.published_date), 'MMM yyyy')}
+                            </span>
+                          )}
+                          {sp.is_bookmarked && (
+                            <BookmarkCheck className="w-3 h-3 inline ml-1 text-gray-900" />
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">{sp.abstract}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
