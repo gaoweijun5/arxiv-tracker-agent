@@ -116,13 +116,13 @@ async def run_paper_agent(
         "categories": i.get("categories", []),
     } for i in interests_data])
 
-    user_message = f"""Find and process papers for the user.
+    user_message = f"""Find and process papers based on these SPECIFIC interests. Do NOT call get_user_interests().
 
 User interests: {interests_summary}
 Search parameters: days_back={days_back}, max_results={max_results}
 
-Start by getting the user's interests and feedback summary, then search for papers,
-analyze the most promising ones, and download/save the best results."""
+Use the keywords and categories from the interests above to search arXiv.
+Start by searching for papers, then analyze the most promising ones, and download/save the best results."""
 
     await _send_progress("start", 5, "Starting paper agent...")
 
