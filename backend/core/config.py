@@ -46,9 +46,9 @@ class Settings(BaseSettings):
     arxiv_user_agent: str = "arxiv-tracker-agent/0.1.0"
 
     # RAG retrieval
-    rag_chunk_top_k: int = 8
-    rag_retrieval_candidates: int = 20
-    rag_confidence_threshold: float = 0.65
+    rag_chunk_top_k: int = 15
+    rag_retrieval_candidates: int = 30
+    rag_confidence_threshold: float = 0.7
     rag_rrf_k: int = 60
 
     # Scheduler
