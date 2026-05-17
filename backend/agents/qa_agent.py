@@ -67,15 +67,6 @@ def create_qa_workflow() -> StateGraph:
             except Exception as e:
                 logger.warning(f"Failed to extract from PDF: {e}")
 
-        # Auto-download if needed
-        if not context and paper and paper.pdf_url:
-            try:
-                from backend.services.rag_service import get_rag_service
-                rag = get_rag_service()
-                context = await rag._download_and_extract_pdf(paper, factory)
-            except Exception as e:
-                logger.warning(f"Failed to auto-download PDF: {e}")
-
         if not context:
             context = state.get("abstract", "")
 

@@ -107,7 +107,7 @@ async def run_fetch_workflow(
                 categories_fetched=[i.get("topic") for i in interests_data],
                 papers_found=result.get("papers_found", 0),
                 papers_relevant=result.get("papers_relevant", 0),
-                papers_downloaded=result.get("papers_saved", 0),
+                papers_downloaded=0,
                 status=result.get("status", "success"),
                 error_message=result.get("error"),
             )
@@ -120,7 +120,8 @@ async def run_fetch_workflow(
             payload = {
                 "papers_found": result.get("papers_found", 0),
                 "papers_relevant": result.get("papers_relevant", 0),
-                "papers_downloaded": result.get("papers_saved", 0),
+                "papers_saved": result.get("papers_saved", 0),
+                "papers_downloaded": 0,
                 "status": result.get("status", "success"),
             }
             if result.get("status") == "failed":

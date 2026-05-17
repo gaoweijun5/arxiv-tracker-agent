@@ -14,7 +14,7 @@ English | [中文](README_CN.md)
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
 - **AI Summarization** - Generate summaries, key findings, and Chinese translations using DeepSeek
 - **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
-- **Full-text Q&A** - Ask questions about papers with full PDF content as context
+- **Full-text Q&A** - Manually download a paper PDF, then ask questions with full PDF content as context
 - **Real-time Progress** - WebSocket-powered live updates during paper fetching
 - **Paper Management** - Bookmark, mark as read, filter, batch delete papers
 - **LangSmith Observability** - Full tracing of agent decisions and LLM calls
@@ -60,10 +60,18 @@ LANGSMITH_PROJECT=Agent
 # === Advanced (defaults are fine) ===
 # DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
 # CHROMA_PERSIST_DIR=./data/vectors
-# ARXIV_MAX_RESULTS=50  
+# ARXIV_MAX_RESULTS=50
+# ARXIV_PAGE_SIZE=10
+# ARXIV_REQUEST_INTERVAL_SECONDS=3
+# ARXIV_MAX_RETRIES=2
+# ARXIV_RATE_LIMIT_BACKOFF_SECONDS=60
+# ARXIV_REQUEST_TIMEOUT_SECONDS=90
+# ARXIV_USER_AGENT="arxiv-tracker-agent/0.1.0 (mailto:your-email@example.com)"
 # DAILY_FETCH_HOUR=8
 # DAILY_FETCH_MINUTE=0
 ```
+
+`ARXIV_USER_AGENT` should identify your app and include a contact email or project URL. The default crawler is conservative: arXiv API and PDF requests are serialized, spaced at least 3 seconds apart, search pages are capped at 10 records, and 403/429 responses trigger a longer shared backoff.
 
 ### Local Run
 
@@ -90,7 +98,8 @@ Click **Fetch Papers** on Dashboard or Settings page:
 - Select specific topics to search
 - Choose search period (1-30 days)
 - Set max results per topic
-- The autonomous agent will search, analyze, and save papers automatically
+- The autonomous agent will search, analyze, and save paper metadata automatically
+- PDFs are not downloaded during fetch; use the download button on a paper detail page when you need full-text Q&A
 - Watch real-time progress via WebSocket
 
 ### 3. Browse Papers
@@ -105,6 +114,7 @@ Click **Fetch Papers** on Dashboard or Settings page:
 ### 4. Paper Q&A
 
 On paper detail page, click **Chat** to open the Q&A sidebar:
+- Click the download button first if the paper is not marked **PDF Ready**
 - Ask questions about the paper
 - AI reads the full PDF and answers based on complete content
 - Conversation history is saved
@@ -114,7 +124,7 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 
 **Fetch returns 0 papers or fails**
 
-This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. arXiv limits the number of requests from the same IP. If you've been testing frequently, wait 10-30 minutes before trying again. The system will automatically retry on rate limit errors.
+This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. arXiv limits the number of requests from the same IP. If you've been testing frequently, wait 10-30 minutes before trying again. The system serializes arXiv traffic, waits at least 3 seconds between requests, and backs off after 403/429 responses.
 
 ## Architecture
 
@@ -133,11 +143,11 @@ This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. 
         ┌─────────────────┼─────────────────┐
         ▼                 ▼                 ▼
 ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
-│  LangGraph    │ │   Services    │ │   Database    │
+│  LangGraph    │ │   Services    │ │   Storage     │
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
-│ - QA Agent    │ │ - DeepSeek    │ │ - ChromaDB    │
-│ (ReAct)       │ │ - DashScope   │ │               │
+│ (ReAct)       │ │ - DeepSeek    │ │ - ChromaDB    │
+│               │ │ - RAG Q&A     │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
                           │
                           ▼
@@ -164,7 +174,7 @@ User: "Find papers matching my interests"
 │  4. check_paper_exists() → skip duplicates   │
 │  5. check_relevance() → quick filter         │
 │  6. analyze_paper() → full analysis          │
-│  7. download_and_save_paper() → save best    │
+│  7. save_paper() → save best metadata        │
 │                                              │
 │  LLM decides tool order and adjusts strategy │
 │  based on results (reflection)               │

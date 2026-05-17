@@ -9,7 +9,7 @@ from loguru import logger
 
 from backend.agents.tools import (
     search_arxiv, analyze_paper, check_relevance,
-    download_and_save_paper, get_user_interests,
+    save_paper, get_user_interests,
     get_user_feedback_summary, check_paper_exists,
     set_task_id, set_selected_interests, set_cancel_event, _send_progress, _stats_ctx,
 )
@@ -23,7 +23,7 @@ WORKFLOW:
 4. For each promising paper, call check_paper_exists() to skip duplicates
 5. For new papers, call check_relevance() first as a quick filter
 6. For relevant papers (score >= 0.5), call analyze_paper() for full analysis
-7. Only download_and_save_paper() for papers with relevance_score >= 0.6
+7. Only save_paper() for papers with relevance_score >= 0.6
 
 STRICT RULES:
 - ONLY search for topics returned by get_user_interests(). Do NOT search for other topics.
@@ -31,7 +31,8 @@ STRICT RULES:
 - If too few results, try variations of the SAME interest keywords (e.g. synonyms), NOT different topics.
 - You may increase days_back to find more papers, but keep the same keywords/categories.
 - Analyze at most 20 papers per run.
-- Download at most 10 papers per run.
+- Save at most 10 papers per run.
+- Do not download PDFs during fetch. PDFs are downloaded only after the user clicks the download button.
 
 When done, provide a brief summary of what you found, analyzed, and saved."""
 
@@ -52,7 +53,7 @@ def _create_agent():
     tools = [
         get_user_interests, get_user_feedback_summary,
         search_arxiv, check_paper_exists, check_relevance,
-        analyze_paper, download_and_save_paper,
+        analyze_paper, save_paper,
     ]
 
     # Disable parallel tool calls to avoid message ordering issues with DeepSeek
@@ -112,7 +113,7 @@ async def run_paper_agent(
 Search parameters: days_back={days_back}, max_results={max_results}
 
 Start by getting the user's interests and feedback summary, then search for papers,
-analyze the most promising ones, and download/save the best results."""
+analyze the most promising ones, and save the best matching paper metadata."""
 
     await _send_progress("start", 5, "Starting paper agent...")
 

@@ -48,7 +48,7 @@ async def daily_paper_fetch():
                 categories_fetched=[i.topic for i in interests],
                 papers_found=agent_result.get("papers_found", 0),
                 papers_relevant=agent_result.get("papers_relevant", 0),
-                papers_downloaded=agent_result.get("papers_saved", 0),
+                papers_downloaded=0,
                 status=agent_result.get("status", "success"),
                 error_message=agent_result.get("error"),
             )

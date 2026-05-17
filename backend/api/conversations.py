@@ -49,7 +49,7 @@ async def ask_question(request: QuestionRequest, db: AsyncSession = Depends(get_
         conversation_history=request.conversation_history,
     )
 
-    return {
+    result_payload = {
         "response": response["response"],
         "sources": response.get("sources", []),
         "paper": {
@@ -58,6 +58,12 @@ async def ask_question(request: QuestionRequest, db: AsyncSession = Depends(get_
             "arxiv_id": paper.arxiv_id,
         },
     }
+    if response.get("error"):
+        result_payload["error"] = response["error"]
+    if response.get("requires_download"):
+        result_payload["requires_download"] = True
+
+    return result_payload
 
 
 @router.get("/{paper_id}", response_model=list[ConversationResponse])

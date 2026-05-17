@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # arXiv
     arxiv_max_results: int = 50
     arxiv_categories: list[str] = ["cs.AI", "cs.CL", "cs.CV", "cs.LG"]
+    arxiv_page_size: int = 10
+    arxiv_request_interval_seconds: float = 3.0
+    arxiv_max_retries: int = 2
+    arxiv_rate_limit_backoff_seconds: float = 60.0
+    arxiv_request_timeout_seconds: float = 90.0
+    arxiv_user_agent: str = "arxiv-tracker-agent/0.1.0"
 
     # Scheduler
     daily_fetch_hour: int = 8

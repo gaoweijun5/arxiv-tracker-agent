@@ -187,6 +187,7 @@ export const systemApi = {
     task_id?: string
     papers_found?: number
     papers_relevant?: number
+    papers_saved?: number
     digest?: string
   }> => {
     const { data } = await api.post('/system/fetch', { days_back: 7, max_results: 30 })

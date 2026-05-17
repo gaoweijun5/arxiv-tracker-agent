@@ -81,6 +81,8 @@ export interface QuestionRequest {
 export interface QuestionResponse {
   response: string
   sources: string[]
+  error?: string
+  requires_download?: boolean
   paper: {
     id: number
     title: string

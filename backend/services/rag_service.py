@@ -63,17 +63,14 @@ class RAGService:
             except Exception as e:
                 logger.warning(f"Failed to extract text from PDF: {e}")
 
-        # Auto-download PDF if not available locally
-        if not context and paper.pdf_url:
-            try:
-                context = await self._download_and_extract_pdf(paper, factory)
-            except Exception as e:
-                logger.warning(f"Failed to auto-download PDF: {e}")
-
-        # Final fallback: use abstract
         if not context:
-            logger.info("Using abstract as context (no PDF available)")
-            context = paper.abstract
+            logger.info("PDF is not available locally; refusing automatic download for Q&A")
+            return {
+                "response": "PDF is not downloaded yet. Click the download button first, then ask again.",
+                "sources": [],
+                "error": "pdf_not_downloaded",
+                "requires_download": True,
+            }
 
         # Build conversation context
         conversation_context = ""
@@ -118,61 +115,6 @@ class RAGService:
                 "sources": [],
                 "error": str(e),
             }
-
-    async def _download_and_extract_pdf(self, paper, factory) -> str:
-        """Download PDF and extract full text.
-
-        Args:
-            paper: Paper ORM object
-            factory: Database session factory
-
-        Returns:
-            Extracted full text or empty string
-        """
-        from backend.core.config import get_settings
-        import httpx
-
-        settings = get_settings()
-        settings.papers_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = settings.papers_dir / f"{paper.arxiv_id.replace('/', '_')}.pdf"
-
-        # Download if not cached
-        if not pdf_path.exists():
-            logger.info(f"Auto-downloading PDF for Q&A: {paper.pdf_url}")
-            async with httpx.AsyncClient() as client:
-                response = await client.get(paper.pdf_url, follow_redirects=True, timeout=60.0)
-                response.raise_for_status()
-                pdf_path.write_bytes(response.content)
-
-        # Extract text
-        full_text = self.pdf_service.extract_text(pdf_path)
-        if not full_text:
-            return ""
-
-        # Update database with local path
-        async with factory() as session:
-            from sqlalchemy import select
-            result = await session.execute(select(Paper).where(Paper.id == paper.id))
-            db_paper = result.scalar_one_or_none()
-            if db_paper:
-                db_paper.local_pdf_path = str(pdf_path)
-                db_paper.is_downloaded = True
-                await session.commit()
-
-        # Also index into vector store for future use
-        try:
-            chunks = self.pdf_service.chunk_text(full_text)
-            if chunks:
-                await self.vector_store.add_paper_chunks(
-                    arxiv_id=paper.arxiv_id,
-                    title=paper.title,
-                    chunks=chunks,
-                )
-        except Exception as e:
-            logger.warning(f"Failed to index chunks to vector store: {e}")
-
-        logger.info(f"Auto-downloaded and extracted {len(full_text)} chars for {paper.arxiv_id}")
-        return full_text
 
     async def get_paper_summary(self, paper_id: int) -> Optional[dict]:
         """Get paper summary and key information.

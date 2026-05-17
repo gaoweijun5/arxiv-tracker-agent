@@ -236,23 +236,15 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
     try:
         from backend.services.pdf_service import get_pdf_service
         from backend.services.vector_store import get_vector_store
-        from backend.core.config import get_settings
-        import httpx
+        from backend.services.arxiv_service import get_arxiv_service
 
         pdf_service = get_pdf_service()
         vector_store = get_vector_store()
-        settings = get_settings()
+        arxiv_service = get_arxiv_service()
 
-        # Download PDF directly using the URL
-        settings.papers_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = settings.papers_dir / f"{paper.arxiv_id.replace('/', '_')}.pdf"
-
-        if not pdf_path.exists():
-            logger.info(f"Downloading PDF from {paper.pdf_url}")
-            async with httpx.AsyncClient() as client:
-                response = await client.get(paper.pdf_url, follow_redirects=True, timeout=60.0)
-                response.raise_for_status()
-                pdf_path.write_bytes(response.content)
+        pdf_path = await arxiv_service.download_pdf_url(paper.pdf_url, paper.arxiv_id)
+        if not pdf_path:
+            raise HTTPException(status_code=502, detail="Failed to download PDF from arXiv")
 
         # Extract text
         full_text = pdf_service.extract_text(pdf_path)

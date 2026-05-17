@@ -75,6 +75,11 @@ export default function PaperDetailPage() {
         conversation_history: history,
       })
 
+      if (response.requires_download) {
+        toast.error(response.response)
+        return
+      }
+
       const newConv: Conversation = {
         id: Date.now(),
         paper_id: paper.id,
@@ -380,13 +385,13 @@ export default function PaperDetailPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
-                placeholder="Ask a question..."
+                placeholder={paper.is_downloaded ? 'Ask a question...' : 'Download PDF before asking...'}
                 className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
-                disabled={asking}
+                disabled={asking || !paper.is_downloaded}
               />
               <button
                 onClick={handleAskQuestion}
-                disabled={!question.trim() || asking}
+                disabled={!question.trim() || asking || !paper.is_downloaded}
                 className="px-3 py-1.5 bg-gray-900 text-white text-sm rounded hover:bg-gray-800 disabled:opacity-40"
               >
                 {asking ? (

@@ -452,7 +452,7 @@ async def analyze_paper(
 
 
 @tool
-async def download_and_save_paper(
+async def save_paper(
     arxiv_id: str,
     title: str,
     abstract: str,
@@ -466,13 +466,12 @@ async def download_and_save_paper(
     relevance_score: float,
     relevance_reason: str,
 ) -> str:
-    """Download the PDF and save a paper to the database. Only call this for papers with relevance_score >= 0.6."""
+    """Save relevant paper metadata without downloading the PDF. Only call this for papers with relevance_score >= 0.6."""
     check_cancelled()
-    logger.info(f"TOOL download_and_save_paper: {arxiv_id} - {title[:50]}...")
+    logger.info(f"TOOL save_paper: {arxiv_id} - {title[:50]}...")
     try:
         from backend.models.database import get_session_factory, Paper, PaperRecommendation
         from backend.services.vector_store import get_vector_store
-        from backend.services.pdf_service import get_pdf_service
         from backend.services.llm_service import get_llm_service
         from sqlalchemy import select
         from datetime import datetime
@@ -516,39 +515,12 @@ async def download_and_save_paper(
 
         factory = get_session_factory()
         vector_store = get_vector_store()
-        pdf_service = get_pdf_service()
 
         async with factory() as session:
             # Check exists
             result = await session.execute(select(Paper).where(Paper.arxiv_id == arxiv_id))
             if result.scalar_one_or_none():
                 return json.dumps({"status": "exists", "arxiv_id": arxiv_id, "message": "Paper already in database"})
-
-            # Download PDF directly using pdf_url
-            pdf_path = None
-            full_text = None
-            is_downloaded = False
-
-            if pdf_url:
-                try:
-                    from backend.core.config import get_settings
-                    settings = get_settings()
-                    settings.papers_dir.mkdir(parents=True, exist_ok=True)
-                    filename = f"{arxiv_id.replace('/', '_')}.pdf"
-                    pdf_path = settings.papers_dir / filename
-
-                    if not pdf_path.exists():
-                        import httpx as httpx_lib
-                        async with httpx_lib.AsyncClient() as client:
-                            response = await client.get(pdf_url, follow_redirects=True, timeout=60.0)
-                            response.raise_for_status()
-                            pdf_path.write_bytes(response.content)
-
-                    is_downloaded = True
-                    full_text = pdf_service.extract_text(pdf_path)
-                except Exception as e:
-                    logger.warning(f"PDF download failed for {arxiv_id}: {e}")
-                    is_downloaded = False
 
             # Parse published_date
             try:
@@ -560,10 +532,10 @@ async def download_and_save_paper(
             paper = Paper(
                 arxiv_id=arxiv_id, title=title, authors=authors, abstract=abstract,
                 categories=categories, published_date=pub_date, pdf_url=pdf_url,
-                local_pdf_path=str(pdf_path) if pdf_path else None,
+                local_pdf_path=None,
                 ai_summary=ai_summary, ai_summary_zh=ai_summary_zh,
                 key_findings=key_findings, relevance_score=relevance_score,
-                is_downloaded=is_downloaded,
+                is_downloaded=False,
             )
             session.add(paper)
             await session.flush()
@@ -578,10 +550,6 @@ async def download_and_save_paper(
         # Index in vector store
         try:
             await vector_store.add_paper(arxiv_id=arxiv_id, title=title, abstract=abstract)
-            if full_text:
-                chunks = pdf_service.chunk_text(full_text)
-                if chunks:
-                    await vector_store.add_paper_chunks(arxiv_id=arxiv_id, title=title, chunks=chunks)
         except Exception as e:
             logger.warning(f"Vector store indexing failed: {e}")
 
@@ -589,7 +557,7 @@ async def download_and_save_paper(
         stats["papers_saved"] += 1
 
         await _send_progress("save", 85, f"Saved: {title[:40]}")
-        return json.dumps({"status": "saved", "arxiv_id": arxiv_id, "paper_id": paper_id, "is_downloaded": is_downloaded})
+        return json.dumps({"status": "saved", "arxiv_id": arxiv_id, "paper_id": paper_id, "is_downloaded": False})
     except Exception as e:
-        logger.error(f"download_and_save_paper failed: {e}")
+        logger.error(f"save_paper failed: {e}")
         return json.dumps({"error": str(e)})
