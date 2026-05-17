@@ -27,6 +27,9 @@ data/
 
 # Claude
 .claude/
+AGENTS.md
+CLAUDE.md
+Claude.md
 
 # Node
 node_modules/
