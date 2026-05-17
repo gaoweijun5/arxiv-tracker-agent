@@ -1,6 +1,7 @@
 """LangChain tools for the autonomous paper agent."""
 
 import json
+import asyncio
 import contextvars
 from typing import Optional
 from langchain_core.tools import tool
@@ -10,6 +11,7 @@ from loguru import logger
 _task_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('task_id', default=None)
 _stats_ctx: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar('stats', default=None)
 _selected_interests_ctx: contextvars.ContextVar[Optional[list]] = contextvars.ContextVar('selected_interests', default=None)
+_cancel_event_ctx: contextvars.ContextVar[Optional[asyncio.Event]] = contextvars.ContextVar('cancel_event', default=None)
 
 
 def set_task_id(task_id: Optional[str]) -> None:
@@ -18,6 +20,17 @@ def set_task_id(task_id: Optional[str]) -> None:
 
 def set_selected_interests(interests: Optional[list]) -> None:
     _selected_interests_ctx.set(interests)
+
+
+def set_cancel_event(event: asyncio.Event) -> None:
+    _cancel_event_ctx.set(event)
+
+
+def check_cancelled():
+    """Raise CancelledError if the current task has been cancelled."""
+    event = _cancel_event_ctx.get()
+    if event and event.is_set():
+        raise asyncio.CancelledError("Cancelled by user")
 
 
 def get_stats() -> dict:
@@ -44,6 +57,7 @@ async def _send_progress(step: str, progress: int, message: str):
 @tool
 async def get_user_interests() -> str:
     """Get the user's selected research interests. Call this first to understand what topics to search for."""
+    check_cancelled()
     try:
         # Use pre-selected interests if available (user chose specific topics in UI)
         selected = _selected_interests_ctx.get()
@@ -77,6 +91,7 @@ async def get_user_interests() -> str:
 @tool
 async def get_user_feedback_summary() -> str:
     """Get a summary of the user's past feedback (bookmarked, read, skipped papers) to learn their preferences. Use this to guide search strategy."""
+    check_cancelled()
     try:
         from backend.models.database import get_session_factory, Paper
         from sqlalchemy import select, func
@@ -137,6 +152,7 @@ async def search_arxiv(
     max_results: int = 30,
 ) -> str:
     """Search arXiv for recent papers matching keywords and categories. Returns a list of papers with title, arxiv_id, abstract snippet, authors, and categories."""
+    check_cancelled()
     logger.info(f"TOOL search_arxiv: keywords={keywords}, categories={categories}, days_back={days_back}")
     try:
         await _send_progress("fetch", 15, f"Searching arXiv: {', '.join(keywords[:3])}...")
@@ -178,6 +194,7 @@ async def search_arxiv(
 @tool
 async def check_paper_exists(arxiv_id: str) -> str:
     """Check if a paper already exists in the database. Use this before analyzing to skip duplicates."""
+    check_cancelled()
     logger.info(f"TOOL check_paper_exists: {arxiv_id}")
     try:
         from backend.models.database import get_session_factory, Paper
@@ -199,6 +216,7 @@ async def check_paper_exists(arxiv_id: str) -> str:
 @tool
 async def check_relevance(title: str, abstract: str, categories: list[str]) -> str:
     """Quickly check if a paper is relevant to the user's interests. Returns a relevance score (0-1). Use this before full analysis to filter out irrelevant papers."""
+    check_cancelled()
     logger.info(f"TOOL check_relevance: {title[:50]}...")
     try:
         from backend.services.llm_service import get_llm_service
@@ -233,6 +251,7 @@ async def analyze_paper(
     categories: list[str],
 ) -> str:
     """Fully analyze a paper: generate AI summary, key findings, methodology, and relevance score. Use this for papers that pass the relevance check."""
+    check_cancelled()
     logger.info(f"TOOL analyze_paper: {arxiv_id} - {title[:50]}...")
     try:
         await _send_progress("analyze", 40, f"Analyzing: {title[:40]}...")
@@ -278,6 +297,7 @@ async def download_and_save_paper(
     relevance_reason: str,
 ) -> str:
     """Download the PDF and save a paper to the database. Only call this for papers with relevance_score >= 0.6."""
+    check_cancelled()
     logger.info(f"TOOL download_and_save_paper: {arxiv_id} - {title[:50]}...")
     try:
         from backend.models.database import get_session_factory, Paper, PaperRecommendation

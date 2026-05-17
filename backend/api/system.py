@@ -15,6 +15,7 @@ router = APIRouter(prefix="/system", tags=["system"])
 
 # Registry of running background tasks
 _running_tasks: dict[str, asyncio.Task] = {}
+_cancel_events: dict[str, asyncio.Event] = {}
 
 
 class SystemStats(BaseModel):
@@ -79,6 +80,7 @@ async def run_fetch_workflow(
     days_back: int = 7,
     max_results: int = 30,
     task_id: str = None,
+    cancel_event: asyncio.Event = None,
 ):
     """Background task to run the autonomous paper agent."""
     from backend.agents.paper_agent import run_paper_agent
@@ -93,6 +95,7 @@ async def run_fetch_workflow(
             days_back=days_back,
             max_results=max_results,
             task_id=task_id,
+            cancel_event=cancel_event,
         )
 
         # Log the fetch
@@ -175,16 +178,20 @@ async def trigger_fetch(
 
     # Run workflow in background
     interests_data = [i.to_dict() for i in interests]
+    cancel_event = asyncio.Event()
+    _cancel_events[task_id] = cancel_event
     task = asyncio.create_task(
         run_fetch_workflow(
             interests_data,
             request.days_back,
             request.max_results,
             task_id,
+            cancel_event,
         )
     )
     _running_tasks[task_id] = task
     task.add_done_callback(lambda t: _running_tasks.pop(task_id, None))
+    task.add_done_callback(lambda t: _cancel_events.pop(task_id, None))
 
     return {
         "status": "started",
@@ -203,8 +210,14 @@ async def cancel_fetch(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found or already completed")
 
+    # Set cancel event so tools can check it
+    cancel_event = _cancel_events.get(task_id)
+    if cancel_event:
+        cancel_event.set()
+
     task.cancel()
     _running_tasks.pop(task_id, None)
+    _cancel_events.pop(task_id, None)
     logger.info(f"Cancelled fetch task: {task_id}")
 
     # Try to send cancellation via WebSocket

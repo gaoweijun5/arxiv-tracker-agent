@@ -11,7 +11,7 @@ from backend.agents.tools import (
     search_arxiv, analyze_paper, check_relevance,
     download_and_save_paper, get_user_interests,
     get_user_feedback_summary, check_paper_exists,
-    set_task_id, set_selected_interests, get_stats, _send_progress, _stats_ctx,
+    set_task_id, set_selected_interests, set_cancel_event, get_stats, _send_progress, _stats_ctx,
 )
 
 AGENT_SYSTEM_PROMPT = """You are an autonomous research paper agent. Your goal is to discover, analyze, and save high-quality academic papers that match the user's research interests.
@@ -82,6 +82,7 @@ async def run_paper_agent(
     days_back: int = 7,
     max_results: int = 30,
     task_id: Optional[str] = None,
+    cancel_event: Optional[asyncio.Event] = None,
 ) -> dict:
     """Run the autonomous paper agent.
 
@@ -90,12 +91,15 @@ async def run_paper_agent(
         days_back: How many days back to search
         max_results: Max results per search
         task_id: WebSocket task ID for progress updates
+        cancel_event: Event to signal cancellation
 
     Returns:
         Dict with status, stats, and final message
     """
     set_task_id(task_id)
     set_selected_interests(interests_data)
+    if cancel_event:
+        set_cancel_event(cancel_event)
 
     # Initialize stats in context
     stats = {"papers_found": 0, "papers_analyzed": 0, "papers_relevant": 0, "papers_saved": 0}
