@@ -39,20 +39,30 @@ This will create `.env`, install all dependencies, and create data directories.
 
 ### Configuration
 
-Edit `.env` and add your API key:
-
 ```env
-OPENAI_API_KEY=sk-your-deepseek-key
-```
+# === LLM API ===
+OPENAI_API_KEY=sk-your-api-key-here
 
-All other settings have sensible defaults. Optional:
+# Set your Model
+OPENAI_API_BASE=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
 
-```env
-# Embedding API (DashScope) - for better semantic search
-EMBEDDING_API_KEY=sk-your-dashscope-key
+# === Embedding API ===
+# Any OpenAI-compatible embedding API works.
+EMBEDDING_API_KEY=sk-your-embedding-key
+EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+EMBEDDING_MODEL=text-embedding-v4
 
-# LangSmith Tracing (optional)
+# === Optional ===
 LANGSMITH_API_KEY=your-langsmith-key
+LANGSMITH_PROJECT=Agent
+
+# === Advanced (defaults are fine) ===
+# DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
+# CHROMA_PERSIST_DIR=./data/vectors
+# ARXIV_MAX_RESULTS=50
+# DAILY_FETCH_HOUR=8
+# DAILY_FETCH_MINUTE=0
 ```
 
 ### Local Run

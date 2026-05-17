@@ -39,20 +39,33 @@ make setup
 
 ### 配置
 
-编辑 `.env`，填入 API 密钥：
+`make setup` 会根据 `.env.example` 创建本地 `.env` 文件。请编辑 `.env` 并填入需要的配置，不要提交 `.env`。
 
 ```env
-OPENAI_API_KEY=sk-your-deepseek-key
-```
+# === LLM API ===
+OPENAI_API_KEY=sk-your-api-key-here
 
-其他配置均有默认值，可选：
+# 设置你想使用的模型
+OPENAI_API_BASE=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
 
-```env
-# 向量嵌入 API (DashScope) - 提升语义搜索质量
-EMBEDDING_API_KEY=sk-your-dashscope-key
+# === Embedding API ===
+# 语义搜索、推荐和相似论文匹配需要配置该项。
+# 兼容 OpenAI Embedding API 格式的服务都可以使用。
+EMBEDDING_API_KEY=sk-your-embedding-key
+EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+EMBEDDING_MODEL=text-embedding-v4
 
-# LangSmith 追踪（可选）
+# === Optional ===
 LANGSMITH_API_KEY=your-langsmith-key
+LANGSMITH_PROJECT=Agent
+
+# === Advanced（默认值通常够用）
+# DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
+# CHROMA_PERSIST_DIR=./data/vectors
+# ARXIV_MAX_RESULTS=50
+# DAILY_FETCH_HOUR=8
+# DAILY_FETCH_MINUTE=0
 ```
 
 ### 本地启动
