@@ -150,10 +150,11 @@ analyze the most promising ones, and download/save the best results."""
         }
 
     except Exception as e:
-        logger.error(f"Paper agent failed: {e}")
+        error_msg = str(e) or type(e).__name__
+        logger.error(f"Paper agent failed: {error_msg}")
         return {
             "status": "failed",
-            "error": str(e),
+            "error": error_msg,
             "papers_found": stats["papers_found"],
             "papers_analyzed": stats["papers_analyzed"],
             "papers_relevant": stats["papers_relevant"],
