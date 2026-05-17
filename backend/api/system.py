@@ -13,6 +13,9 @@ from backend.models.database import get_db, Paper, UserInterest, PaperRecommenda
 
 router = APIRouter(prefix="/system", tags=["system"])
 
+# Registry of running background tasks
+_running_tasks: dict[str, asyncio.Task] = {}
+
 
 class SystemStats(BaseModel):
     """System statistics."""
@@ -172,13 +175,16 @@ async def trigger_fetch(
 
     # Run workflow in background
     interests_data = [i.to_dict() for i in interests]
-    background_tasks.add_task(
-        run_fetch_workflow,
-        interests_data,
-        request.days_back,
-        request.max_results,
-        task_id,
+    task = asyncio.create_task(
+        run_fetch_workflow(
+            interests_data,
+            request.days_back,
+            request.max_results,
+            task_id,
+        )
     )
+    _running_tasks[task_id] = task
+    task.add_done_callback(lambda t: _running_tasks.pop(task_id, None))
 
     return {
         "status": "started",
@@ -188,6 +194,27 @@ async def trigger_fetch(
         "days_back": request.days_back,
         "max_results": request.max_results,
     }
+
+
+@router.post("/fetch/{task_id}/cancel")
+async def cancel_fetch(task_id: str):
+    """Cancel a running fetch task."""
+    task = _running_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found or already completed")
+
+    task.cancel()
+    _running_tasks.pop(task_id, None)
+    logger.info(f"Cancelled fetch task: {task_id}")
+
+    # Try to send cancellation via WebSocket
+    try:
+        from backend.api.websocket import send_error
+        await send_error(task_id, "Cancelled by user")
+    except Exception:
+        pass
+
+    return {"message": "Fetch cancelled", "task_id": task_id}
 
 
 @router.get("/interests")

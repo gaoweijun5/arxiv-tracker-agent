@@ -30,6 +30,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
   const [fetching, setFetching] = useState(false)
   const [progress, setProgress] = useState<FetchProgress | null>(null)
   const [result, setResult] = useState<any>(null)
+  const [taskId, setTaskId] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -96,12 +97,29 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
         max_results: maxResults,
       })
       if (response.task_id) {
+        setTaskId(response.task_id)
         connectWebSocket(response.task_id)
       }
     } catch (error) {
       toast.error('Failed to start fetch')
       setFetching(false)
     }
+  }
+
+  const handleCancel = async () => {
+    if (taskId) {
+      try {
+        await systemApi.cancelFetch(taskId)
+      } catch (error) {
+        // Ignore errors - task may have already completed
+      }
+    }
+    if (wsRef.current) {
+      wsRef.current.close()
+    }
+    setFetching(false)
+    setTaskId(null)
+    onClose()
   }
 
   const toggleInterest = (id: number) => {
@@ -216,9 +234,8 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
         {/* Footer */}
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
           <button
-            onClick={onClose}
+            onClick={result ? onClose : handleCancel}
             className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
-            disabled={fetching}
           >
             {result ? 'Close' : 'Cancel'}
           </button>

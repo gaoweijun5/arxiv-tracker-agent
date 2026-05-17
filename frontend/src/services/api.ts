@@ -207,6 +207,10 @@ export const systemApi = {
     return data
   },
 
+  cancelFetch: async (taskId: string): Promise<void> => {
+    await api.post(`/system/fetch/${taskId}/cancel`)
+  },
+
   getFetchLogs: async (limit?: number, page?: number): Promise<{ logs: FetchLog[]; total: number; page: number; page_size: number }> => {
     const { data } = await api.get('/system/fetch-logs', { params: { limit, page } })
     return data
