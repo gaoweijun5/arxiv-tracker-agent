@@ -19,19 +19,6 @@ English | [中文](README_CN.md)
 - **Paper Management** - Bookmark, mark as read, filter, batch delete papers
 - **LangSmith Observability** - Full tracing of agent decisions and LLM calls
 
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Backend** | Python, FastAPI, LangChain, LangGraph |
-| **LLM** | DeepSeek v4 Flash |
-| **Embedding** | DashScope text-embedding-v4 |
-| **Vector Store** | ChromaDB |
-| **Database** | SQLite + SQLAlchemy |
-| **Frontend** | React, TypeScript, Tailwind CSS |
-| **Observability** | LangSmith |
-| **Package Manager** | uv (Python), npm (Node) |
-
 ## Quick Start
 
 ### Prerequisites
@@ -40,7 +27,7 @@ English | [中文](README_CN.md)
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-### One-command Setup
+### Setup
 
 ```bash
 git clone git@github.com:gaoweijun5/arxiv-tracker-agent.git
@@ -48,11 +35,7 @@ cd arxiv-tracker-agent
 make setup
 ```
 
-This will:
-- Create `.env` from `.env.example`
-- Install Python backend dependencies
-- Install frontend dependencies
-- Create data directories
+This will create `.env`, install all dependencies, and create data directories.
 
 ### Configuration
 
@@ -72,7 +55,7 @@ EMBEDDING_API_KEY=sk-your-dashscope-key
 LANGSMITH_API_KEY=your-langsmith-key
 ```
 
-### One-command Run
+### Run
 
 ```bash
 make dev
@@ -116,44 +99,6 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 - AI reads the full PDF and answers based on complete content
 - Conversation history is saved
 - Clear chat history with the trash icon
-
-## API Endpoints
-
-### Papers
-- `GET /api/v1/papers` - List papers (supports filtering and sorting)
-- `GET /api/v1/papers/{id}` - Get paper details
-- `DELETE /api/v1/papers/{id}` - Delete paper
-- `POST /api/v1/papers/batch-delete` - Batch delete papers by IDs
-- `PUT /api/v1/papers/{id}/read` - Mark as read
-- `PUT /api/v1/papers/{id}/bookmark` - Toggle bookmark
-- `POST /api/v1/papers/{id}/download` - Download PDF for Q&A
-- `POST /api/v1/papers/search` - Semantic search
-
-### Conversations
-- `POST /api/v1/conversations/ask` - Ask a question about a paper
-- `GET /api/v1/conversations/{paper_id}` - Get conversation history
-- `DELETE /api/v1/conversations/paper/{paper_id}` - Clear chat history
-
-### Interests
-- `GET /api/v1/interests` - List interests
-- `POST /api/v1/interests` - Create interest
-- `PUT /api/v1/interests/{id}` - Update interest
-- `DELETE /api/v1/interests/{id}` - Delete interest
-
-### Recommendations
-- `GET /api/v1/recommendations` - List recommendations
-- `GET /api/v1/recommendations/today` - Today's recommendations
-- `POST /api/v1/recommendations/refresh` - Refresh recommendations
-
-### System
-- `POST /api/v1/system/fetch` - Fetch papers with options
-- `GET /api/v1/system/stats` - System statistics
-- `GET /api/v1/system/fetch-logs` - Fetch history (with source: manual/auto)
-- `GET /api/v1/system/scheduler` - Get scheduler config
-- `PUT /api/v1/system/scheduler` - Update scheduler config
-
-### WebSocket
-- `ws://localhost:8000/ws/progress/{task_id}` - Real-time progress
 
 ## Architecture
 
@@ -209,6 +154,61 @@ User: "Find papers matching my interests"
 │  based on results (reflection)               │
 └─────────────────────────────────────────────┘
 ```
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Backend** | Python, FastAPI, LangChain, LangGraph |
+| **LLM** | DeepSeek v4 Flash |
+| **Embedding** | DashScope text-embedding-v4 |
+| **Vector Store** | ChromaDB |
+| **Database** | SQLite + SQLAlchemy |
+| **Frontend** | React, TypeScript, Tailwind CSS |
+| **Observability** | LangSmith |
+
+## API Endpoints
+
+<details>
+<summary>Click to expand</summary>
+
+### Papers
+- `GET /api/v1/papers` - List papers (supports filtering and sorting)
+- `GET /api/v1/papers/{id}` - Get paper details
+- `DELETE /api/v1/papers/{id}` - Delete paper
+- `POST /api/v1/papers/batch-delete` - Batch delete papers by IDs
+- `PUT /api/v1/papers/{id}/read` - Mark as read
+- `PUT /api/v1/papers/{id}/bookmark` - Toggle bookmark
+- `POST /api/v1/papers/{id}/download` - Download PDF for Q&A
+- `POST /api/v1/papers/search` - Semantic search
+
+### Conversations
+- `POST /api/v1/conversations/ask` - Ask a question about a paper
+- `GET /api/v1/conversations/{paper_id}` - Get conversation history
+- `DELETE /api/v1/conversations/paper/{paper_id}` - Clear chat history
+
+### Interests
+- `GET /api/v1/interests` - List interests
+- `POST /api/v1/interests` - Create interest
+- `PUT /api/v1/interests/{id}` - Update interest
+- `DELETE /api/v1/interests/{id}` - Delete interest
+
+### Recommendations
+- `GET /api/v1/recommendations` - List recommendations
+- `GET /api/v1/recommendations/today` - Today's recommendations
+- `POST /api/v1/recommendations/refresh` - Refresh recommendations
+
+### System
+- `POST /api/v1/system/fetch` - Fetch papers with options
+- `GET /api/v1/system/stats` - System statistics
+- `GET /api/v1/system/fetch-logs` - Fetch history (with source: manual/auto)
+- `GET /api/v1/system/scheduler` - Get scheduler config
+- `PUT /api/v1/system/scheduler` - Update scheduler config
+
+### WebSocket
+- `ws://localhost:8000/ws/progress/{task_id}` - Real-time progress
+
+</details>
 
 ## License
 
