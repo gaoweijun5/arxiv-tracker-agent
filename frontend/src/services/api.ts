@@ -6,6 +6,8 @@ import type {
   InterestCreate,
   Recommendation,
   RecommendationListResponse,
+  ResearchReport,
+  ResearchReportListResponse,
   Conversation,
   QuestionRequest,
   QuestionResponse,
@@ -188,6 +190,7 @@ export const systemApi = {
     papers_found?: number
     papers_relevant?: number
     papers_saved?: number
+    report_id?: number | null
     digest?: string
   }> => {
     const { data } = await api.post('/system/fetch', { days_back: 7, max_results: 30 })
@@ -221,20 +224,42 @@ export const systemApi = {
     await api.delete(`/system/fetch-logs/${logId}`)
   },
 
-  getSchedulerConfig: async (): Promise<{ hour: number; minute: number; is_enabled: boolean }> => {
+  getSchedulerConfig: async (): Promise<{ hour: number; minute: number; is_enabled: boolean; days_back: number; max_results: number }> => {
     const { data } = await api.get('/system/scheduler')
     return data
   },
 
-  updateSchedulerConfig: async (hour: number, minute: number, is_enabled: boolean): Promise<any> => {
+  updateSchedulerConfig: async (hour: number, minute: number, is_enabled: boolean, days_back?: number, max_results?: number): Promise<any> => {
     const { data } = await api.put('/system/scheduler', null, {
-      params: { hour, minute, is_enabled },
+      params: { hour, minute, is_enabled, days_back, max_results },
     })
     return data
   },
 
   healthCheck: async (): Promise<{ status: string }> => {
     const { data } = await api.get('/system/health')
+    return data
+  },
+}
+
+/** Reports API */
+export const reportsApi = {
+  list: async (params?: {
+    page?: number
+    page_size?: number
+    source?: string
+  }): Promise<ResearchReportListResponse> => {
+    const { data } = await api.get('/reports', { params })
+    return data
+  },
+
+  latest: async (source?: string): Promise<ResearchReport | null> => {
+    const { data } = await api.get('/reports/latest', { params: { source } })
+    return data
+  },
+
+  get: async (id: number): Promise<ResearchReport> => {
+    const { data } = await api.get(`/reports/${id}`)
     return data
   },
 }

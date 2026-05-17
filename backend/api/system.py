@@ -86,8 +86,10 @@ async def run_fetch_workflow(
     from backend.agents.paper_agent import run_paper_agent
     from backend.models.database import get_session_factory, FetchLog
     from backend.api.websocket import send_complete, send_error
+    from backend.services.report_service import get_report_service
 
     logger.info(f"Starting paper agent (days_back={days_back}, max_results={max_results})")
+    report_id = None
 
     try:
         result = await run_paper_agent(
@@ -112,7 +114,21 @@ async def run_fetch_workflow(
                 error_message=result.get("error"),
             )
             db.add(log)
+            await db.flush()
+            fetch_log_id = log.id
             await db.commit()
+
+        try:
+            await _send_report_progress(task_id)
+            report = await get_report_service().generate_fetch_report(
+                fetch_log_id=fetch_log_id,
+                agent_result=result,
+                source="manual",
+                interests_data=interests_data,
+            )
+            report_id = report.id
+        except Exception as e:
+            logger.error(f"Research report generation failed: {e}")
 
         logger.info(f"Agent completed: {result.get('papers_found', 0)} found, {result.get('papers_saved', 0)} saved")
 
@@ -122,6 +138,7 @@ async def run_fetch_workflow(
                 "papers_relevant": result.get("papers_relevant", 0),
                 "papers_saved": result.get("papers_saved", 0),
                 "papers_downloaded": 0,
+                "report_id": report_id,
                 "status": result.get("status", "success"),
             }
             if result.get("status") == "failed":
@@ -148,7 +165,39 @@ async def run_fetch_workflow(
                 error_message=str(e),
             )
             db.add(log)
+            await db.flush()
+            fetch_log_id = log.id
             await db.commit()
+
+        try:
+            report = await get_report_service().generate_fetch_report(
+                fetch_log_id=fetch_log_id,
+                agent_result={
+                    "status": "failed",
+                    "error": str(e),
+                    "papers_found": 0,
+                    "papers_analyzed": 0,
+                    "papers_relevant": 0,
+                    "papers_saved": 0,
+                    "saved_paper_ids": [],
+                },
+                source="manual",
+                interests_data=interests_data,
+            )
+            report_id = report.id
+        except Exception as report_error:
+            logger.error(f"Failed to generate failure research report: {report_error}")
+
+
+async def _send_report_progress(task_id: str | None) -> None:
+    if not task_id:
+        return
+    try:
+        from backend.api.websocket import send_progress
+
+        await send_progress(task_id, "report", 92, "Generating research report...")
+    except Exception as e:
+        logger.warning(f"Failed to send report progress: {e}")
 
 
 @router.post("/fetch")
@@ -329,15 +378,19 @@ async def update_scheduler(
     hour: int = Query(ge=0, le=23),
     minute: int = Query(ge=0, le=59),
     is_enabled: bool = True,
+    days_back: int = Query(ge=1, le=30, default=7),
+    max_results: int = Query(ge=5, le=100, default=30),
 ):
     """Update scheduler configuration."""
     from backend.scheduler import update_scheduler_config
 
-    await update_scheduler_config(hour, minute, is_enabled)
+    await update_scheduler_config(hour, minute, is_enabled, days_back, max_results)
 
     return {
         "message": "Scheduler updated",
         "hour": hour,
         "minute": minute,
         "is_enabled": is_enabled,
+        "days_back": days_back,
+        "max_results": max_results,
     }

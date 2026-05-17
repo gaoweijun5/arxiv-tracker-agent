@@ -17,6 +17,8 @@ class RAGService:
         self.vector_store = get_vector_store()
         self.llm_service = get_llm_service()
         self.pdf_service = get_pdf_service()
+        from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
+        self.hybrid_retrieval = get_hybrid_retrieval_service()
 
     async def ask_question(
         self,
@@ -52,24 +54,58 @@ class RAGService:
                 "error": "Paper not found",
             }
 
-        # Load full paper text directly from PDF
         context = ""
+        retrieval_mode = "full_text"
+        source_chunks = []
 
-        # Try local PDF first
-        if paper.local_pdf_path and Path(paper.local_pdf_path).exists():
-            try:
-                context = self.pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
-                logger.info(f"Loaded {len(context)} chars from local PDF")
-            except Exception as e:
-                logger.warning(f"Failed to extract text from PDF: {e}")
-
-        if not context:
+        has_chunks = await self.hybrid_retrieval.has_chunks(paper_id)
+        has_local_pdf = bool(paper.local_pdf_path and Path(paper.local_pdf_path).exists())
+        if not has_chunks and not has_local_pdf:
             logger.info("PDF is not available locally; refusing automatic download for Q&A")
             return {
                 "response": "PDF is not downloaded yet. Click the download button first, then ask again.",
                 "sources": [],
                 "error": "pdf_not_downloaded",
                 "requires_download": True,
+            }
+
+        if has_chunks:
+            retrieved_chunks, use_chunks = await self.hybrid_retrieval.hybrid_search(
+                paper_id=paper_id,
+                arxiv_id=arxiv_id,
+                query=question,
+            )
+            source_chunks = [chunk.to_source_dict() for chunk in retrieved_chunks]
+            if use_chunks:
+                retrieval_mode = "hybrid_chunks"
+                context = "\n\n---\n\n".join([
+                    self._format_chunk_context(chunk.to_source_dict(), chunk.chunk.content)
+                    for chunk in retrieved_chunks
+                ])
+                top_conf = retrieved_chunks[0].confidence if retrieved_chunks else 0.0
+                logger.info(
+                    f"Using {len(retrieved_chunks)} retrieved chunks for {arxiv_id}; "
+                    f"top confidence={top_conf:.3f}"
+                )
+
+        if not context:
+            retrieval_mode = "full_text"
+            if has_local_pdf:
+                try:
+                    context = self.pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
+                    logger.info(f"Loaded {len(context)} chars from local PDF")
+                except Exception as e:
+                    logger.warning(f"Failed to extract text from PDF: {e}")
+
+            if not context and has_chunks:
+                context = await self.hybrid_retrieval.get_full_text_from_chunks(paper_id)
+                logger.info(f"Reconstructed {len(context)} chars from persisted chunks")
+
+        if not context:
+            return {
+                "response": "I could not load enough local paper context to answer. Please download the PDF again.",
+                "sources": [],
+                "error": "context_unavailable",
             }
 
         # Build conversation context
@@ -104,8 +140,10 @@ class RAGService:
 
             return {
                 "response": response,
-                "sources": [f"Paper: {paper.title}"],
+                "sources": self._sources_for_response(paper.title, retrieval_mode, source_chunks),
                 "context_used": len(context),
+                "retrieval_mode": retrieval_mode,
+                "source_chunks": source_chunks if retrieval_mode == "hybrid_chunks" else [],
             }
 
         except Exception as e:
@@ -115,6 +153,37 @@ class RAGService:
                 "sources": [],
                 "error": str(e),
             }
+
+    def _format_chunk_context(self, source: dict, content: str) -> str:
+        page_start = source.get("page_start")
+        page_end = source.get("page_end")
+        if page_start and page_end and page_start != page_end:
+            page_label = f"pages {page_start}-{page_end}"
+        elif page_start:
+            page_label = f"page {page_start}"
+        else:
+            page_label = "page unknown"
+        return (
+            f"[Chunk {source.get('chunk_index')} | {page_label} | "
+            f"confidence {source.get('confidence')}]\n{content}"
+        )
+
+    def _sources_for_response(
+        self,
+        paper_title: str,
+        retrieval_mode: str,
+        source_chunks: list[dict],
+    ) -> list[str]:
+        if retrieval_mode != "hybrid_chunks":
+            return [f"Paper: {paper_title}"]
+        sources = []
+        for source in source_chunks:
+            page_start = source.get("page_start")
+            if page_start:
+                sources.append(f"Chunk {source.get('chunk_index')} (page {page_start})")
+            else:
+                sources.append(f"Chunk {source.get('chunk_index')}")
+        return sources
 
     async def get_paper_summary(self, paper_id: int) -> Optional[dict]:
         """Get paper summary and key information.

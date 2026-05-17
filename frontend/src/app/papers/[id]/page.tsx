@@ -86,6 +86,8 @@ export default function PaperDetailPage() {
         user_message: question.trim(),
         ai_response: response.response,
         created_at: new Date().toISOString(),
+        retrieval_mode: response.retrieval_mode,
+        source_chunks: response.source_chunks,
       }
 
       setConversations((prev) => [...prev, newConv])
@@ -370,6 +372,28 @@ export default function PaperDetailPage() {
                       <ReactMarkdown className="prose prose-sm max-w-none">
                         {conv.ai_response}
                       </ReactMarkdown>
+                      {conv.retrieval_mode && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          {conv.retrieval_mode === 'hybrid_chunks' && conv.source_chunks?.length ? (
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-medium text-gray-500 uppercase">Sources</p>
+                              {conv.source_chunks.slice(0, 4).map((chunk) => (
+                                <div key={chunk.id} className="text-[11px] text-gray-500">
+                                  <span className="font-medium text-gray-600">
+                                    Chunk {chunk.chunk_index}
+                                    {chunk.page_start ? ` · p.${chunk.page_start}` : ''}
+                                    {' · '}
+                                    {Math.round(chunk.confidence * 100)}%
+                                  </span>
+                                  <span className="block line-clamp-1">{chunk.snippet}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-gray-500">Used full paper context</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

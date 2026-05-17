@@ -63,13 +63,51 @@ export interface RecommendationListResponse {
   page_size: number
 }
 
+/** Research report types */
+export interface ResearchReport {
+  id: number
+  fetch_log_id: number | null
+  source: string
+  title: string
+  summary: string | null
+  content_md: string
+  paper_ids: number[]
+  stats: Record<string, number | string | null>
+  status: string
+  error_message: string | null
+  created_at: string | null
+  updated_at: string | null
+  papers: Paper[]
+}
+
+export interface ResearchReportListResponse {
+  reports: ResearchReport[]
+  total: number
+  page: number
+  page_size: number
+}
+
 /** Conversation types */
+export interface SourceChunk {
+  id: number
+  chunk_index: number
+  page_start: number | null
+  page_end: number | null
+  confidence: number
+  semantic_score: number
+  keyword_score: number
+  rrf_score: number
+  snippet: string
+}
+
 export interface Conversation {
   id: number
   paper_id: number
   user_message: string
   ai_response: string
   created_at: string | null
+  retrieval_mode?: 'hybrid_chunks' | 'full_text'
+  source_chunks?: SourceChunk[]
 }
 
 export interface QuestionRequest {
@@ -83,6 +121,8 @@ export interface QuestionResponse {
   sources: string[]
   error?: string
   requires_download?: boolean
+  retrieval_mode?: 'hybrid_chunks' | 'full_text'
+  source_chunks?: SourceChunk[]
   paper: {
     id: number
     title: string

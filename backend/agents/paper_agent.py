@@ -103,7 +103,13 @@ async def run_paper_agent(
         set_cancel_event(cancel_event)
 
     # Initialize stats in context
-    stats = {"papers_found": 0, "papers_analyzed": 0, "papers_relevant": 0, "papers_saved": 0}
+    stats = {
+        "papers_found": 0,
+        "papers_analyzed": 0,
+        "papers_relevant": 0,
+        "papers_saved": 0,
+        "saved_paper_ids": [],
+    }
     _stats_ctx.set(stats)
 
     agent = get_paper_agent()
@@ -138,6 +144,7 @@ analyze the most promising ones, and save the best matching paper metadata."""
             "papers_analyzed": stats["papers_analyzed"],
             "papers_relevant": stats["papers_relevant"],
             "papers_saved": stats["papers_saved"],
+            "saved_paper_ids": stats["saved_paper_ids"],
             "final_message": final_message,
         }
 
@@ -153,6 +160,7 @@ analyze the most promising ones, and save the best matching paper metadata."""
             "papers_analyzed": stats["papers_analyzed"],
             "papers_relevant": stats["papers_relevant"],
             "papers_saved": stats["papers_saved"],
+            "saved_paper_ids": stats["saved_paper_ids"],
         }
 
 

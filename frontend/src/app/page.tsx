@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, ArrowRight } from 'lucide-react'
-import { systemApi, recommendationsApi } from '../services/api'
-import type { SystemStats, Recommendation } from '../types'
+import { Search, ArrowRight, FileText } from 'lucide-react'
+import { systemApi, recommendationsApi, reportsApi } from '../services/api'
+import type { SystemStats, Recommendation, ResearchReport } from '../types'
 import FetchModal from '../components/FetchModal'
 import { format } from 'date-fns'
 
 export default function HomePage() {
   const [stats, setStats] = useState<SystemStats | null>(null)
   const [todayRecs, setTodayRecs] = useState<Recommendation[]>([])
+  const [latestReport, setLatestReport] = useState<ResearchReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [showFetchModal, setShowFetchModal] = useState(false)
 
@@ -18,12 +19,14 @@ export default function HomePage() {
 
   const loadData = async () => {
     try {
-      const [statsData, recsData] = await Promise.all([
+      const [statsData, recsData, reportData] = await Promise.all([
         systemApi.getStats(),
         recommendationsApi.getToday(),
+        reportsApi.latest(),
       ])
       setStats(statsData)
       setTodayRecs(recsData.recommendations)
+      setLatestReport(reportData)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -80,6 +83,42 @@ export default function HomePage() {
         </Link>
       </div>
 
+      {/* Latest Research Report */}
+      <div className="bg-white border border-gray-200 rounded-lg mb-6">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <h2 className="text-sm font-medium text-gray-900">Latest Research Report</h2>
+          <Link
+            to="/reports"
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+          >
+            View all <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+        {latestReport ? (
+          <Link to={`/reports/${latestReport.id}`} className="block px-4 py-4 hover:bg-gray-50">
+            <div className="flex items-start gap-3">
+              <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">{latestReport.title}</p>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                  {latestReport.summary || latestReport.status}
+                </p>
+                <div className="flex gap-3 text-xs text-gray-400 mt-2">
+                  <span>{latestReport.source === 'auto' ? 'Auto' : 'Manual'}</span>
+                  <span>Found {latestReport.stats.papers_found || 0}</span>
+                  <span>Saved {latestReport.stats.papers_saved || 0}</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ) : (
+          <div className="px-4 py-8 text-center">
+            <p className="text-sm text-gray-500">No reports yet</p>
+            <p className="text-xs text-gray-400 mt-1">Fetch papers to generate a research report</p>
+          </div>
+        )}
+      </div>
+
       {/* Today's Recommendations */}
       <div className="bg-white border border-gray-200 rounded-lg">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -132,7 +171,6 @@ export default function HomePage() {
         onClose={() => setShowFetchModal(false)}
         onComplete={() => {
           loadData()
-          setShowFetchModal(false)
         }}
       />
     </div>

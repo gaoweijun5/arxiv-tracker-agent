@@ -6,12 +6,14 @@ import {
   Heart,
   Settings,
   BookOpen,
+  Newspaper,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Papers', href: '/papers', icon: FileText },
   { name: 'Recommendations', href: '/recommendations', icon: Sparkles },
+  { name: 'Reports', href: '/reports', icon: Newspaper },
   { name: 'Interests', href: '/interests', icon: Heart },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -32,7 +34,9 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="flex-1 py-3 px-2">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href
+            const isActive = item.href === '/'
+              ? location.pathname === item.href
+              : location.pathname.startsWith(item.href)
             return (
               <Link
                 key={item.name}

@@ -29,11 +29,15 @@ class ConversationResponse(BaseModel):
 
 
 @router.post("/ask")
-async def ask_question(request: QuestionRequest, db: AsyncSession = Depends(get_db)):
+async def ask_question(request: QuestionRequest):
     """Ask a question about a paper."""
-    # Get paper
-    result = await db.execute(select(Paper).where(Paper.id == request.paper_id))
-    paper = result.scalar_one_or_none()
+    # Get paper using a short-lived session (avoid holding db open during LLM call)
+    from backend.models.database import get_session_factory
+    factory = get_session_factory()
+
+    async with factory() as db:
+        result = await db.execute(select(Paper).where(Paper.id == request.paper_id))
+        paper = result.scalar_one_or_none()
 
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
@@ -52,6 +56,8 @@ async def ask_question(request: QuestionRequest, db: AsyncSession = Depends(get_
     result_payload = {
         "response": response["response"],
         "sources": response.get("sources", []),
+        "retrieval_mode": response.get("retrieval_mode"),
+        "source_chunks": response.get("source_chunks", []),
         "paper": {
             "id": paper.id,
             "title": paper.title,

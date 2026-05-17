@@ -235,12 +235,12 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
 
     try:
         from backend.services.pdf_service import get_pdf_service
-        from backend.services.vector_store import get_vector_store
         from backend.services.arxiv_service import get_arxiv_service
+        from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
 
         pdf_service = get_pdf_service()
-        vector_store = get_vector_store()
         arxiv_service = get_arxiv_service()
+        hybrid_retrieval = get_hybrid_retrieval_service()
 
         pdf_path = await arxiv_service.download_pdf_url(paper.pdf_url, paper.arxiv_id)
         if not pdf_path:
@@ -251,14 +251,13 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         if not full_text:
             raise HTTPException(status_code=500, detail="Failed to extract text from PDF")
 
-        # Chunk and store in vector DB
-        chunks = pdf_service.chunk_text(full_text)
-        if chunks:
-            await vector_store.add_paper_chunks(
-                arxiv_id=paper.arxiv_id,
-                title=paper.title,
-                chunks=chunks,
-            )
+        # Chunk and store in SQLite FTS + Chroma for hybrid Q&A retrieval
+        chunks = await hybrid_retrieval.replace_paper_chunks(
+            paper_id=paper.id,
+            arxiv_id=paper.arxiv_id,
+            title=paper.title,
+            full_text=full_text,
+        )
 
         # Update database
         paper.local_pdf_path = str(pdf_path)
@@ -277,6 +276,59 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error(f"Failed to download PDF: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/rebuild-chunks")
+async def rebuild_chunks(db: AsyncSession = Depends(get_db)):
+    """Backfill chunks for papers that were downloaded before hybrid retrieval was added."""
+    from backend.services.pdf_service import get_pdf_service
+    from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
+    from pathlib import Path
+
+    pdf_service = get_pdf_service()
+    hybrid_retrieval = get_hybrid_retrieval_service()
+
+    result = await db.execute(
+        select(Paper).where(Paper.is_downloaded == True, Paper.local_pdf_path.isnot(None))
+    )
+    papers = result.scalars().all()
+
+    processed = 0
+    skipped = 0
+    errors = []
+
+    for paper in papers:
+        has_chunks = await hybrid_retrieval.has_chunks(paper.id)
+        if has_chunks:
+            skipped += 1
+            continue
+
+        pdf_path = Path(paper.local_pdf_path)
+        if not pdf_path.exists():
+            errors.append(f"{paper.arxiv_id}: PDF file not found")
+            continue
+
+        try:
+            full_text = pdf_service.extract_text(pdf_path)
+            if not full_text:
+                errors.append(f"{paper.arxiv_id}: failed to extract text")
+                continue
+
+            await hybrid_retrieval.replace_paper_chunks(
+                paper_id=paper.id,
+                arxiv_id=paper.arxiv_id,
+                title=paper.title,
+                full_text=full_text,
+            )
+            processed += 1
+        except Exception as e:
+            errors.append(f"{paper.arxiv_id}: {e}")
+
+    return {
+        "processed": processed,
+        "skipped": skipped,
+        "errors": errors,
+    }
 
 
 @router.post("/search")

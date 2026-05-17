@@ -14,6 +14,7 @@ English | [中文](README_CN.md)
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
 - **AI Summarization** - Generate summaries, key findings, and Chinese translations using DeepSeek
 - **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
+- **Research Reports** - Generate a persistent Markdown research report after every manual or scheduled fetch
 - **Full-text Q&A** - Manually download a paper PDF, then ask questions with full PDF content as context
 - **Real-time Progress** - WebSocket-powered live updates during paper fetching
 - **Paper Management** - Bookmark, mark as read, filter, batch delete papers
@@ -100,6 +101,7 @@ Click **Fetch Papers** on Dashboard or Settings page:
 - Set max results per topic
 - The autonomous agent will search, analyze, and save paper metadata automatically
 - PDFs are not downloaded during fetch; use the download button on a paper detail page when you need full-text Q&A
+- A research report is generated after each fetch and saved under **Reports**
 - Watch real-time progress via WebSocket
 
 ### 3. Browse Papers
@@ -200,6 +202,11 @@ User: "Find papers matching my interests"
 - `POST /api/v1/conversations/ask` - Ask a question about a paper
 - `GET /api/v1/conversations/{paper_id}` - Get conversation history
 - `DELETE /api/v1/conversations/paper/{paper_id}` - Clear chat history
+
+### Reports
+- `GET /api/v1/reports` - List research reports
+- `GET /api/v1/reports/latest` - Get latest research report
+- `GET /api/v1/reports/{id}` - Get one research report
 
 ### Interests
 - `GET /api/v1/interests` - List interests

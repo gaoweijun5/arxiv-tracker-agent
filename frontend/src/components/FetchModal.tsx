@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Search, Loader2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { X, Search, Loader2, FileText } from 'lucide-react'
 import { systemApi } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -228,9 +229,21 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
             <div className={`rounded p-3 text-sm ${
               result.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
             }`}>
-              {result.status === 'success'
-                ? `Found ${result.papers_found} papers, ${result.papers_relevant} relevant`
-                : `Failed: ${result.error}`}
+              <div>
+                {result.status === 'success'
+                  ? `Found ${result.papers_found} papers, ${result.papers_relevant} relevant, ${result.papers_saved || 0} saved`
+                  : `Failed: ${result.error}`}
+              </div>
+              {result.report_id && (
+                <Link
+                  to={`/reports/${result.report_id}`}
+                  onClick={onClose}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-green-800 hover:text-green-950"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View research report
+                </Link>
+              )}
             </div>
           )}
         </div>

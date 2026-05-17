@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [schedulerHour, setSchedulerHour] = useState(8)
   const [schedulerMinute, setSchedulerMinute] = useState(0)
   const [schedulerEnabled, setSchedulerEnabled] = useState(true)
+  const [schedulerDaysBack, setSchedulerDaysBack] = useState(7)
+  const [schedulerMaxResults, setSchedulerMaxResults] = useState(30)
   const [savingScheduler, setSavingScheduler] = useState(false)
 
   useEffect(() => {
@@ -45,6 +47,8 @@ export default function SettingsPage() {
       setSchedulerHour(config.hour)
       setSchedulerMinute(config.minute)
       setSchedulerEnabled(config.is_enabled)
+      setSchedulerDaysBack(config.days_back ?? 7)
+      setSchedulerMaxResults(config.max_results ?? 30)
     } catch (error) {
       console.error('Failed to load scheduler config:', error)
     }
@@ -53,7 +57,10 @@ export default function SettingsPage() {
   const handleSaveScheduler = async () => {
     setSavingScheduler(true)
     try {
-      await systemApi.updateSchedulerConfig(schedulerHour, schedulerMinute, schedulerEnabled)
+      await systemApi.updateSchedulerConfig(
+        schedulerHour, schedulerMinute, schedulerEnabled,
+        schedulerDaysBack, schedulerMaxResults
+      )
       toast.success('Schedule updated')
     } catch (error) {
       toast.error('Failed to update schedule')
@@ -163,6 +170,36 @@ export default function SettingsPage() {
             <Save className="w-3.5 h-3.5" />
             {savingScheduler ? 'Saving...' : 'Save'}
           </button>
+        </div>
+
+        <div className="flex items-end gap-4 mt-4">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Search Period (days)</label>
+            <select
+              value={schedulerDaysBack}
+              onChange={(e) => setSchedulerDaysBack(parseInt(e.target.value))}
+              className="px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+            >
+              <option value={1}>1 day</option>
+              <option value={3}>3 days</option>
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Max Results per Topic</label>
+            <select
+              value={schedulerMaxResults}
+              onChange={(e) => setSchedulerMaxResults(parseInt(e.target.value))}
+              className="px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+            >
+              <option value={10}>10 papers</option>
+              <option value={20}>20 papers</option>
+              <option value={30}>30 papers</option>
+              <option value={50}>50 papers</option>
+            </select>
+          </div>
         </div>
 
         <p className="text-xs text-gray-400 mt-3">
@@ -305,7 +342,6 @@ export default function SettingsPage() {
         onClose={() => setShowFetchModal(false)}
         onComplete={() => {
           loadFetchLogs()
-          setShowFetchModal(false)
         }}
       />
     </div>

@@ -1,7 +1,7 @@
 """Database models and connection setup."""
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, JSON, ForeignKey, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -46,6 +46,7 @@ class Paper(Base):
     # Relationships
     recommendations = relationship("PaperRecommendation", back_populates="paper")
     conversations = relationship("Conversation", back_populates="paper")
+    chunks = relationship("PaperChunk", back_populates="paper")
 
     def to_dict(self) -> dict:
         """Convert paper to dictionary."""
@@ -161,6 +162,41 @@ class Conversation(Base):
         }
 
 
+class PaperChunk(Base):
+    """Persisted full-text chunk for hybrid paper Q&A retrieval."""
+
+    __tablename__ = "paper_chunks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False, index=True)
+    arxiv_id = Column(String(50), nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    page_start = Column(Integer, nullable=True)
+    page_end = Column(Integer, nullable=True)
+    vector_id = Column(String(200), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    paper = relationship("Paper", back_populates="chunks")
+
+    def to_dict(self) -> dict:
+        """Convert chunk to dictionary."""
+        return {
+            "id": self.id,
+            "paper_id": self.paper_id,
+            "arxiv_id": self.arxiv_id,
+            "chunk_index": self.chunk_index,
+            "content": self.content,
+            "page_start": self.page_start,
+            "page_end": self.page_end,
+            "vector_id": self.vector_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class FetchLog(Base):
     """Log of arXiv fetch operations."""
 
@@ -180,6 +216,44 @@ class FetchLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ResearchReport(Base):
+    """Research report generated after a fetch run."""
+
+    __tablename__ = "research_reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fetch_log_id = Column(Integer, ForeignKey("fetch_logs.id"), nullable=True, index=True)
+    source = Column(String(20), default="manual")  # manual, auto
+    title = Column(String(300), nullable=False)
+    summary = Column(Text, nullable=True)
+    content_md = Column(Text, nullable=False)
+    paper_ids = Column(JSON, nullable=True)
+    stats = Column(JSON, nullable=True)
+    status = Column(String(20), nullable=False, default="generated")  # generated, empty, failed
+    error_message = Column(Text, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        """Convert research report to dictionary."""
+        return {
+            "id": self.id,
+            "fetch_log_id": self.fetch_log_id,
+            "source": self.source,
+            "title": self.title,
+            "summary": self.summary,
+            "content_md": self.content_md,
+            "paper_ids": self.paper_ids or [],
+            "stats": self.stats or {},
+            "status": self.status,
+            "error_message": self.error_message,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class SchedulerConfig(Base):
     """Scheduler configuration."""
 
@@ -190,6 +264,8 @@ class SchedulerConfig(Base):
     hour = Column(Integer, nullable=False, default=8)
     minute = Column(Integer, nullable=False, default=0)
     is_enabled = Column(Boolean, default=True)
+    days_back = Column(Integer, nullable=False, default=7)
+    max_results = Column(Integer, nullable=False, default=30)
 
     # Metadata
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -201,6 +277,8 @@ class SchedulerConfig(Base):
             "hour": self.hour,
             "minute": self.minute,
             "is_enabled": self.is_enabled,
+            "days_back": self.days_back,
+            "max_results": self.max_results,
         }
 
 
@@ -245,3 +323,12 @@ async def init_db(database_url: str = "sqlite+aiosqlite:///./data/arxiv_tracker.
     engine = get_engine(database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS paper_chunks_fts
+            USING fts5(
+                content,
+                arxiv_id UNINDEXED,
+                paper_chunk_id UNINDEXED,
+                tokenize='unicode61'
+            )
+        """))

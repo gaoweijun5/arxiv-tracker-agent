@@ -165,7 +165,13 @@ def check_cancelled():
 def get_stats() -> dict:
     stats = _stats_ctx.get()
     if stats is None:
-        stats = {"papers_found": 0, "papers_analyzed": 0, "papers_relevant": 0, "papers_saved": 0}
+        stats = {
+            "papers_found": 0,
+            "papers_analyzed": 0,
+            "papers_relevant": 0,
+            "papers_saved": 0,
+            "saved_paper_ids": [],
+        }
         _stats_ctx.set(stats)
     return stats
 
@@ -555,6 +561,7 @@ async def save_paper(
 
         stats = get_stats()
         stats["papers_saved"] += 1
+        stats.setdefault("saved_paper_ids", []).append(paper_id)
 
         await _send_progress("save", 85, f"Saved: {title[:40]}")
         return json.dumps({"status": "saved", "arxiv_id": arxiv_id, "paper_id": paper_id, "is_downloaded": False})

@@ -136,6 +136,7 @@ class VectorStoreService:
         title: str,
         chunks: list[str],
         metadata: Optional[dict] = None,
+        metadatas: Optional[list[dict]] = None,
     ) -> list[str]:
         """Add paper content chunks to the vector store for RAG.
 
@@ -152,19 +153,22 @@ class VectorStoreService:
             logger.warning("Vector store unavailable, skipping chunks addition")
             return []
 
-        docs = [
-            Document(
-                page_content=chunk,
-                metadata={
-                    "arxiv_id": arxiv_id,
-                    "title": title,
-                    "chunk_index": i,
-                    "type": "paper_chunk",
-                    **(metadata or {}),
-                },
+        docs = []
+        for i, chunk in enumerate(chunks):
+            chunk_metadata = metadatas[i] if metadatas and i < len(metadatas) else {}
+            docs.append(
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "arxiv_id": arxiv_id,
+                        "title": title,
+                        "chunk_index": i,
+                        "type": "paper_chunk",
+                        **(metadata or {}),
+                        **chunk_metadata,
+                    },
+                )
             )
-            for i, chunk in enumerate(chunks)
-        ]
         doc_ids = self.papers_store.add_documents(docs)
         logger.info(f"Added {len(chunks)} chunks for paper {arxiv_id}")
         return doc_ids
@@ -189,12 +193,24 @@ class VectorStoreService:
             logger.warning("Vector store unavailable, returning empty results")
             return []
 
+        chroma_filter = self._normalize_filter(filter_dict)
         results = self.papers_store.similarity_search_with_score(
             query=query,
             k=k,
-            filter=filter_dict,
+            filter=chroma_filter,
         )
         return results
+
+    @staticmethod
+    def _normalize_filter(filter_dict: Optional[dict]) -> Optional[dict]:
+        """Convert a flat dict filter to ChromaDB's $and format if needed."""
+        if not filter_dict:
+            return None
+        if "$and" in filter_dict or "$or" in filter_dict:
+            return filter_dict
+        if len(filter_dict) == 1:
+            return filter_dict
+        return {"$and": [{k: v} for k, v in filter_dict.items()]}
 
     async def search_papers_for_interest(
         self,
@@ -268,7 +284,7 @@ class VectorStoreService:
         results = self.papers_store.similarity_search(
             query=query,
             k=k,
-            filter={"arxiv_id": arxiv_id, "type": "paper_chunk"},
+            filter=self._normalize_filter({"arxiv_id": arxiv_id, "type": "paper_chunk"}),
         )
         context = "\n\n---\n\n".join([doc.page_content for doc in results])
         return context
@@ -288,7 +304,7 @@ class VectorStoreService:
 
         # Get all chunks for this paper
         results = self.papers_store.get(
-            where={"arxiv_id": arxiv_id, "type": "paper_chunk"},
+            where=self._normalize_filter({"arxiv_id": arxiv_id, "type": "paper_chunk"}),
         )
 
         if not results or not results.get("documents"):

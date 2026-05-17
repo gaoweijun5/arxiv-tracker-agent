@@ -159,6 +159,31 @@ Format the output as a daily research newsletter."""),
         ])
         self.digest_chain = digest_prompt | self.llm | StrOutputParser()
 
+        # Research report chain
+        report_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a research curator writing a concise Markdown report after a paper fetch run.
+The audience is a researcher who wants to decide what to read next.
+
+Write a practical report with these sections:
+# Research Report
+## Executive Summary
+## Top Papers
+## Topic Signals
+## Suggested Next Steps
+
+For each paper, explain why it matters and why it matched the user's interests.
+Do not invent facts beyond the provided metadata and summaries."""),
+            ("human", """Fetch source: {source}
+Search interests: {interests}
+Fetch stats: {stats}
+
+Papers:
+{papers}
+
+Create the Markdown research report."""),
+        ])
+        self.report_chain = report_prompt | self.llm | StrOutputParser()
+
     async def generate_summary(
         self,
         title: str,
@@ -316,6 +341,41 @@ Format the output as a daily research newsletter."""),
             return digest
         except Exception as e:
             logger.error(f"Failed to generate digest: {e}")
+            raise
+
+    async def generate_research_report(
+        self,
+        papers: list[dict],
+        stats: dict,
+        interests: list[dict],
+        source: str,
+    ) -> str:
+        """Generate a Markdown research report for one fetch run."""
+        papers_text = "\n\n".join([
+            "\n".join([
+                f"Title: {p.get('title', '')}",
+                f"Authors: {', '.join(p.get('authors') or [])}",
+                f"Categories: {', '.join(p.get('categories') or [])}",
+                f"Score: {p.get('relevance_score')}",
+                f"Summary: {p.get('ai_summary') or p.get('abstract', '')[:500]}",
+                f"Key findings: {'; '.join(p.get('key_findings') or [])}",
+            ])
+            for p in papers[:10]
+        ])
+        interests_text = "\n".join([
+            f"- {i.get('topic', '')}: {', '.join(i.get('keywords') or [])}"
+            for i in interests
+        ])
+
+        try:
+            return await self.report_chain.ainvoke({
+                "source": source,
+                "interests": interests_text or "No explicit interests provided.",
+                "stats": json.dumps(stats, ensure_ascii=False),
+                "papers": papers_text or "No papers saved in this fetch.",
+            })
+        except Exception as e:
+            logger.error(f"Failed to generate research report: {e}")
             raise
 
 

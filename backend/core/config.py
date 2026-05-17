@@ -23,7 +23,6 @@ class Settings(BaseSettings):
 
     # Vector Store
     chroma_persist_dir: str = "./data/vectors"
-    embedding_model: str = "all-MiniLM-L6-v2"
 
     # LLM API (DeepSeek)
     openai_api_key: str = ""
@@ -45,6 +44,12 @@ class Settings(BaseSettings):
     arxiv_rate_limit_backoff_seconds: float = 60.0
     arxiv_request_timeout_seconds: float = 90.0
     arxiv_user_agent: str = "arxiv-tracker-agent/0.1.0"
+
+    # RAG retrieval
+    rag_chunk_top_k: int = 8
+    rag_retrieval_candidates: int = 20
+    rag_confidence_threshold: float = 0.65
+    rag_rrf_k: int = 60
 
     # Scheduler
     daily_fetch_hour: int = 8
