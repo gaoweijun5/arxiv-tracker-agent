@@ -90,54 +90,62 @@ async def get_user_interests() -> str:
 
 @tool
 async def get_user_feedback_summary() -> str:
-    """Get a summary of the user's past feedback (bookmarked, read, skipped papers) to learn their preferences. Use this to guide search strategy."""
+    """Get a summary of the user's past feedback for the SELECTED interests only."""
     check_cancelled()
     try:
         from backend.models.database import get_session_factory, Paper
         from sqlalchemy import select, func
 
+        selected = _selected_interests_ctx.get()
+
         factory = get_session_factory()
         async with factory() as session:
-            # Count by status
-            total = (await session.execute(select(func.count(Paper.id)))).scalar() or 0
-            bookmarked = (await session.execute(
-                select(func.count(Paper.id)).where(Paper.is_bookmarked == True)
-            )).scalar() or 0
-            read = (await session.execute(
-                select(func.count(Paper.id)).where(Paper.is_read == True)
-            )).scalar() or 0
+            # Build category filter from selected interests
+            if selected:
+                selected_categories = set()
+                for interest in selected:
+                    for cat in (interest.get("categories") or []):
+                        selected_categories.add(cat)
 
-            # Top categories among bookmarked papers
-            bm_result = await session.execute(
-                select(Paper).where(Paper.is_bookmarked == True).order_by(Paper.created_at.desc()).limit(10)
-            )
-            bm_papers = bm_result.scalars().all()
+                # Filter bookmarked papers by selected categories
+                all_bm = await session.execute(
+                    select(Paper).where(Paper.is_bookmarked == True)
+                )
+                bm_papers = [p for p in all_bm.scalars().all()
+                             if any(cat in selected_categories for cat in (p.categories or []))]
 
+                total = (await session.execute(select(func.count(Paper.id)))).scalar() or 0
+                bookmarked = len(bm_papers)
+                read = (await session.execute(
+                    select(func.count(Paper.id)).where(Paper.is_read == True)
+                )).scalar() or 0
+            else:
+                bm_result = await session.execute(
+                    select(Paper).where(Paper.is_bookmarked == True).order_by(Paper.created_at.desc()).limit(10)
+                )
+                bm_papers = bm_result.scalars().all()
+                total = (await session.execute(select(func.count(Paper.id)))).scalar() or 0
+                bookmarked = len(bm_papers)
+                read = (await session.execute(
+                    select(func.count(Paper.id)).where(Paper.is_read == True)
+                )).scalar() or 0
+
+            # Categories from filtered bookmarked papers
             category_counts = {}
             for p in bm_papers:
                 for cat in (p.categories or []):
                     category_counts[cat] = category_counts.get(cat, 0) + 1
             top_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:5]
 
-            # Recent bookmarked titles
             recent_titles = [p.title for p in bm_papers[:5]]
-
-            # Average relevance of bookmarked vs non-bookmarked
-            avg_bm = (await session.execute(
-                select(func.avg(Paper.relevance_score)).where(Paper.is_bookmarked == True)
-            )).scalar()
-            avg_nbm = (await session.execute(
-                select(func.avg(Paper.relevance_score)).where(Paper.is_bookmarked == False)
-            )).scalar()
 
         return json.dumps({
             "total_papers": total,
             "total_bookmarked": bookmarked,
             "total_read": read,
             "top_bookmarked_categories": top_categories,
-            "avg_relevance_bookmarked": round(avg_bm, 2) if avg_bm else None,
-            "avg_relevance_not_bookmarked": round(avg_nbm, 2) if avg_nbm else None,
             "recent_bookmarked_titles": recent_titles,
+            "note": "These are based on your selected interests only" if selected else "",
         })
     except Exception as e:
         logger.error(f"get_user_feedback_summary failed: {e}")
@@ -220,17 +228,21 @@ async def check_relevance(title: str, abstract: str, categories: list[str]) -> s
     logger.info(f"TOOL check_relevance: {title[:50]}...")
     try:
         from backend.services.llm_service import get_llm_service
-        from backend.models.database import get_session_factory, UserInterest
-        from sqlalchemy import select
 
-        factory = get_session_factory()
-        async with factory() as session:
-            result = await session.execute(
-                select(UserInterest).where(UserInterest.is_active == True)
-            )
-            interests = result.scalars().all()
-
-        interest_dicts = [{"topic": i.topic, "description": i.description or "", "keywords": i.keywords or []} for i in interests]
+        # Use selected interests from context, not all interests
+        selected = _selected_interests_ctx.get()
+        if selected is not None:
+            interest_dicts = [{"topic": i.get("topic", ""), "description": i.get("description", ""), "keywords": i.get("keywords", [])} for i in selected]
+        else:
+            from backend.models.database import get_session_factory, UserInterest
+            from sqlalchemy import select
+            factory = get_session_factory()
+            async with factory() as session:
+                result = await session.execute(
+                    select(UserInterest).where(UserInterest.is_active == True)
+                )
+                interests = result.scalars().all()
+            interest_dicts = [{"topic": i.topic, "description": i.description or "", "keywords": i.keywords or []} for i in interests]
 
         llm_service = get_llm_service()
         check = await llm_service.check_relevance(
