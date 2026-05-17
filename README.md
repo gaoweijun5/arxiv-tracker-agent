@@ -161,18 +161,6 @@ User: "Find papers matching my interests"
 └─────────────────────────────────────────────┘
 ```
 
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Backend** | Python, FastAPI, LangChain, LangGraph |
-| **LLM** | DeepSeek v4 Flash |
-| **Embedding** | DashScope text-embedding-v4 |
-| **Vector Store** | ChromaDB |
-| **Database** | SQLite + SQLAlchemy |
-| **Frontend** | React, TypeScript, Tailwind CSS |
-| **Observability** | LangSmith |
-
 ## API Endpoints
 
 <details>
