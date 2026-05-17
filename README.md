@@ -40,58 +40,50 @@ English | [中文](README_CN.md)
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-### Installation
+### One-command Setup
 
 ```bash
-# Clone repository
 git clone git@github.com:gaoweijun5/arxiv-tracker-agent.git
 cd arxiv-tracker-agent
-
-# Setup backend
-uv venv
-source .venv/bin/activate  # macOS/Linux
-uv pip install -e .
-
-# Setup frontend
-cd frontend && npm install && cd ..
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
+make setup
 ```
+
+This will:
+- Create `.env` from `.env.example`
+- Install Python backend dependencies
+- Install frontend dependencies
+- Create data directories
 
 ### Configuration
 
-Edit `.env` file:
+Edit `.env` and add your API key:
 
 ```env
-# LLM API (DeepSeek)
 OPENAI_API_KEY=sk-your-deepseek-key
-OPENAI_API_BASE=https://api.deepseek.com
-LLM_MODEL=deepseek-v4-flash
+```
 
-# Embedding API (DashScope)
+All other settings have sensible defaults. Optional:
+
+```env
+# Embedding API (DashScope) - for better semantic search
 EMBEDDING_API_KEY=sk-your-dashscope-key
-EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
-EMBEDDING_MODEL=text-embedding-v4
 
 # LangSmith Tracing (optional)
-LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=your-langsmith-key
-LANGSMITH_PROJECT=your-project-name
 ```
 
-### Run
+### One-command Run
 
 ```bash
-# Terminal 1: Backend
-uv run uvicorn backend.main:app --reload --port 8000
-
-# Terminal 2: Frontend
-cd frontend && npm run dev
+make dev
 ```
 
-Access at http://localhost:3000
+This starts both backend (http://localhost:8000) and frontend (http://localhost:3000) simultaneously.
+
+Other commands:
+- `make backend` - Start backend only
+- `make frontend` - Start frontend only
+- `make clean` - Clean generated files
 
 ## Usage
 

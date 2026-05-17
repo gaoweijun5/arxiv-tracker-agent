@@ -40,58 +40,50 @@ https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-### 安装步骤
+### 一键安装
 
 ```bash
-# 克隆仓库
 git clone git@github.com:gaoweijun5/arxiv-tracker-agent.git
 cd arxiv-tracker-agent
-
-# 安装后端依赖
-uv venv
-source .venv/bin/activate  # macOS/Linux
-uv pip install -e .
-
-# 安装前端依赖
-cd frontend && npm install && cd ..
-
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件，填入 API 密钥
+make setup
 ```
 
-### 环境配置
+自动完成：
+- 从 `.env.example` 创建 `.env`
+- 安装 Python 后端依赖
+- 安装前端依赖
+- 创建数据目录
 
-编辑 `.env` 文件：
+### 配置
+
+编辑 `.env`，填入 API 密钥：
 
 ```env
-# LLM API (DeepSeek)
 OPENAI_API_KEY=sk-your-deepseek-key
-OPENAI_API_BASE=https://api.deepseek.com
-LLM_MODEL=deepseek-v4-flash
+```
 
-# 向量嵌入 API (DashScope)
+其他配置均有默认值，可选：
+
+```env
+# 向量嵌入 API (DashScope) - 提升语义搜索质量
 EMBEDDING_API_KEY=sk-your-dashscope-key
-EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
-EMBEDDING_MODEL=text-embedding-v4
 
 # LangSmith 追踪（可选）
-LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=your-langsmith-key
-LANGSMITH_PROJECT=your-project-name
 ```
 
-### 启动服务
+### 一键启动
 
 ```bash
-# 终端 1：启动后端
-uv run uvicorn backend.main:app --reload --port 8000
-
-# 终端 2：启动前端
-cd frontend && npm run dev
+make dev
 ```
 
-访问 http://localhost:3000
+同时启动后端（http://localhost:8000）和前端（http://localhost:3000）。
+
+其他命令：
+- `make backend` - 仅启动后端
+- `make frontend` - 仅启动前端
+- `make clean` - 清理生成的文件
 
 ## 使用指南
 
