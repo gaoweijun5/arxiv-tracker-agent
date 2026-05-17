@@ -9,10 +9,15 @@ from loguru import logger
 # Context variables for task tracking across tools
 _task_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('task_id', default=None)
 _stats_ctx: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar('stats', default=None)
+_selected_interests_ctx: contextvars.ContextVar[Optional[list]] = contextvars.ContextVar('selected_interests', default=None)
 
 
 def set_task_id(task_id: Optional[str]) -> None:
     _task_id_ctx.set(task_id)
+
+
+def set_selected_interests(interests: Optional[list]) -> None:
+    _selected_interests_ctx.set(interests)
 
 
 def get_stats() -> dict:
@@ -38,8 +43,14 @@ async def _send_progress(step: str, progress: int, message: str):
 
 @tool
 async def get_user_interests() -> str:
-    """Get the user's active research interests. Call this first to understand what topics to search for."""
+    """Get the user's selected research interests. Call this first to understand what topics to search for."""
     try:
+        # Use pre-selected interests if available (user chose specific topics in UI)
+        selected = _selected_interests_ctx.get()
+        if selected is not None:
+            return json.dumps(selected)
+
+        # Fallback: get all active interests from database
         from backend.models.database import get_session_factory, UserInterest
         from sqlalchemy import select
 

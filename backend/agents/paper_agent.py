@@ -11,17 +11,15 @@ from backend.agents.tools import (
     search_arxiv, analyze_paper, check_relevance,
     download_and_save_paper, get_user_interests,
     get_user_feedback_summary, check_paper_exists,
-    set_task_id, get_stats, _send_progress, _stats_ctx,
+    set_task_id, set_selected_interests, get_stats, _send_progress, _stats_ctx,
 )
 
 AGENT_SYSTEM_PROMPT = """You are an autonomous research paper agent. Your goal is to discover, analyze, and save high-quality academic papers that match the user's research interests.
 
-IMPORTANT: The user has provided specific interests in their message. Use ONLY those interests for searching. Do NOT call get_user_interests() - the interests are already provided.
-
 WORKFLOW:
-1. Extract the user's interests (topic, keywords, categories) from their message
+1. Call get_user_interests() to understand what the user cares about
 2. Call get_user_feedback_summary() to learn from past behavior (what was bookmarked, what was skipped)
-3. Call search_arxiv() with keywords and categories from the user's provided interests
+3. Call search_arxiv() with appropriate keywords and categories from the interests
 4. For each promising paper, call check_paper_exists() to skip duplicates
 5. For new papers, call check_relevance() first as a quick filter
 6. For relevant papers (score >= 0.5), call analyze_paper() for full analysis
@@ -103,6 +101,7 @@ async def run_paper_agent(
         Dict with status, stats, and final message
     """
     set_task_id(task_id)
+    set_selected_interests(interests_data)
 
     # Initialize stats in context
     stats = {"papers_found": 0, "papers_analyzed": 0, "papers_relevant": 0, "papers_saved": 0}
@@ -110,19 +109,12 @@ async def run_paper_agent(
 
     agent = get_paper_agent()
 
-    interests_summary = json.dumps([{
-        "topic": i.get("topic", ""),
-        "keywords": i.get("keywords", []),
-        "categories": i.get("categories", []),
-    } for i in interests_data])
+    user_message = f"""Find and process papers for the user.
 
-    user_message = f"""Find and process papers based on these SPECIFIC interests. Do NOT call get_user_interests().
-
-User interests: {interests_summary}
 Search parameters: days_back={days_back}, max_results={max_results}
 
-Use the keywords and categories from the interests above to search arXiv.
-Start by searching for papers, then analyze the most promising ones, and download/save the best results."""
+Start by getting the user's interests and feedback summary, then search for papers,
+analyze the most promising ones, and download/save the best results."""
 
     await _send_progress("start", 5, "Starting paper agent...")
 
