@@ -27,7 +27,7 @@ English | [中文](README_CN.md)
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-### Setup
+### Local Setup
 
 ```bash
 git clone git@github.com:gaoweijun5/arxiv-tracker-agent.git
@@ -55,13 +55,13 @@ EMBEDDING_API_KEY=sk-your-dashscope-key
 LANGSMITH_API_KEY=your-langsmith-key
 ```
 
-### Run
+### Local Run
 
 ```bash
 make dev
 ```
 
-This starts both backend (http://localhost:8000) and frontend (http://localhost:3000) simultaneously.
+This starts both backend (http://localhost:8000) and frontend (http://localhost:3000) simultaneously. The project is intended to run locally through `make`; Docker is not required.
 
 Other commands:
 - `make backend` - Start backend only

@@ -87,6 +87,20 @@ async def cleanup_old_papers():
             old_papers = result.scalars().all()
 
             for paper in old_papers:
+                from backend.models.database import PaperRecommendation, Conversation
+
+                recs_result = await session.execute(
+                    select(PaperRecommendation).where(PaperRecommendation.paper_id == paper.id)
+                )
+                for rec in recs_result.scalars().all():
+                    await session.delete(rec)
+
+                convs_result = await session.execute(
+                    select(Conversation).where(Conversation.paper_id == paper.id)
+                )
+                for conv in convs_result.scalars().all():
+                    await session.delete(conv)
+
                 # Delete from vector store
                 from backend.services.vector_store import get_vector_store
                 vector_store = get_vector_store()

@@ -69,8 +69,12 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
       } else if (data.type === 'complete') {
         setResult(data.result)
         setFetching(false)
-        toast.success(`Found ${data.result.papers_found} papers`)
-        onComplete()
+        if (data.result.status === 'failed') {
+          toast.error('Fetch failed')
+        } else {
+          toast.success(`Found ${data.result.papers_found} papers`)
+          onComplete()
+        }
       } else if (data.type === 'error') {
         setResult({ status: 'failed', error: data.error })
         setFetching(false)

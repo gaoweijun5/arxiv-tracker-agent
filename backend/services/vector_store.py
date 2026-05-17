@@ -62,7 +62,6 @@ class VectorStoreService:
     def __init__(self):
         self.settings = get_settings()
         self._papers_store = None
-        self._interests_store = None
 
     @property
     def embeddings(self):
@@ -95,21 +94,6 @@ class VectorStoreService:
             except Exception as e:
                 logger.warning(f"Failed to create papers store: {e}")
         return self._papers_store
-
-    @property
-    def interests_store(self):
-        """Get or create interests vector store."""
-        if self._interests_store is None and self.embeddings is not None:
-            try:
-                from langchain_community.vectorstores import Chroma
-                self._interests_store = Chroma(
-                    collection_name="interests",
-                    embedding_function=self.embeddings,
-                    persist_directory=self.settings.chroma_persist_dir,
-                )
-            except Exception as e:
-                logger.warning(f"Failed to create interests store: {e}")
-        return self._interests_store
 
     async def add_paper(
         self,
@@ -184,41 +168,6 @@ class VectorStoreService:
         doc_ids = self.papers_store.add_documents(docs)
         logger.info(f"Added {len(chunks)} chunks for paper {arxiv_id}")
         return doc_ids
-
-    async def add_interest(
-        self,
-        interest_id: int,
-        topic: str,
-        description: str,
-        keywords: list[str],
-    ) -> Optional[str]:
-        """Add a user interest to the vector store.
-
-        Args:
-            interest_id: Interest ID in database
-            topic: Interest topic
-            description: Interest description
-            keywords: Related keywords
-
-        Returns:
-            Document ID in vector store or None if unavailable
-        """
-        if self.interests_store is None:
-            logger.warning("Vector store unavailable, skipping interest addition")
-            return None
-
-        content = f"{topic}\n{description}\nKeywords: {', '.join(keywords)}"
-        doc = Document(
-            page_content=content,
-            metadata={
-                "interest_id": interest_id,
-                "topic": topic,
-                "type": "interest",
-            },
-        )
-        doc_id = self.interests_store.add_documents([doc])[0]
-        logger.info(f"Added interest '{topic}' to vector store")
-        return doc_id
 
     async def search_papers(
         self,
@@ -368,16 +317,6 @@ class VectorStoreService:
         # Get all documents with this arxiv_id
         self.papers_store.delete(where={"arxiv_id": arxiv_id})
         logger.info(f"Deleted paper {arxiv_id} from vector store")
-
-    async def delete_interest(self, interest_id: int) -> None:
-        """Delete an interest from the vector store."""
-        if self.interests_store is None:
-            logger.warning("Vector store unavailable, skipping interest deletion")
-            return
-
-        self.interests_store.delete(where={"interest_id": interest_id})
-        logger.info(f"Deleted interest {interest_id} from vector store")
-
 
 # Singleton instance
 _vector_store_service: Optional[VectorStoreService] = None

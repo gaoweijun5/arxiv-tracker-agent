@@ -102,6 +102,7 @@ export interface FetchLog {
   id: number
   fetch_date: string | null
   source: string
+  categories_fetched: string[] | null
   papers_found: number
   papers_relevant: number
   papers_downloaded: number

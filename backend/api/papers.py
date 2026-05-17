@@ -238,7 +238,6 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         from backend.services.vector_store import get_vector_store
         from backend.core.config import get_settings
         import httpx
-        from pathlib import Path
 
         pdf_service = get_pdf_service()
         vector_store = get_vector_store()

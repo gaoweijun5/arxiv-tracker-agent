@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-### 安装
+### 本地安装
 
 ```bash
 git clone git@github.com:gaoweijun5/arxiv-tracker-agent.git
@@ -55,13 +55,13 @@ EMBEDDING_API_KEY=sk-your-dashscope-key
 LANGSMITH_API_KEY=your-langsmith-key
 ```
 
-### 启动
+### 本地启动
 
 ```bash
 make dev
 ```
 
-同时启动后端（http://localhost:8000）和前端（http://localhost:3000）。
+同时启动后端（http://localhost:8000）和前端（http://localhost:3000）。项目默认通过 `make` 在本地运行，不需要 Docker。
 
 其他命令：
 - `make backend` - 仅启动后端

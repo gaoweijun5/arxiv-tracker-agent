@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.database import get_db, UserInterest
-from backend.services.vector_store import get_vector_store
 
 router = APIRouter(prefix="/interests", tags=["interests"])
 

@@ -251,8 +251,8 @@ Format the output as a daily research newsletter."""),
             if not data:
                 # Fallback if JSON parsing fails
                 return RelevanceCheck(
-                    is_relevant=True,
-                    score=0.5,
+                    is_relevant=False,
+                    score=0.0,
                     reason="Unable to determine relevance"
                 )
 
@@ -262,8 +262,8 @@ Format the output as a daily research newsletter."""),
         except Exception as e:
             logger.error(f"Failed to check relevance: {e}")
             return RelevanceCheck(
-                is_relevant=True,
-                score=0.5,
+                is_relevant=False,
+                score=0.0,
                 reason=f"Error: {str(e)[:100]}"
             )
 
@@ -307,7 +307,7 @@ Format the output as a daily research newsletter."""),
             Formatted digest string
         """
         papers_text = "\n\n".join([
-            f"Title: {p['title']}\nSummary: {p.get('ai_summary', p['abstract'][:200])}"
+            f"Title: {p['title']}\nSummary: {p.get('ai_summary') or p.get('abstract', '')[:200]}"
             for p in papers[:10]  # Limit to 10 papers for digest
         ])
 

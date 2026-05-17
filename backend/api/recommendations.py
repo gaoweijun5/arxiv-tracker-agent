@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.models.database import get_db, PaperRecommendation, Paper
+from backend.models.database import get_db, PaperRecommendation
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 

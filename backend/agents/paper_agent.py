@@ -1,6 +1,6 @@
 """Autonomous paper agent using LangGraph's create_react_agent."""
 
-import json
+import asyncio
 from typing import Optional
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
@@ -11,7 +11,7 @@ from backend.agents.tools import (
     search_arxiv, analyze_paper, check_relevance,
     download_and_save_paper, get_user_interests,
     get_user_feedback_summary, check_paper_exists,
-    set_task_id, set_selected_interests, set_cancel_event, get_stats, _send_progress, _stats_ctx,
+    set_task_id, set_selected_interests, set_cancel_event, _send_progress, _stats_ctx,
 )
 
 AGENT_SYSTEM_PROMPT = """You are an autonomous research paper agent. Your goal is to discover, analyze, and save high-quality academic papers that match the user's research interests.
@@ -117,7 +117,6 @@ analyze the most promising ones, and download/save the best results."""
     await _send_progress("start", 5, "Starting paper agent...")
 
     try:
-        import asyncio
         result = await asyncio.wait_for(
             agent.ainvoke({"messages": [("user", user_message)]}),
             timeout=300,  # 5 minute timeout

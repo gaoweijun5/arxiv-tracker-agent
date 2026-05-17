@@ -26,6 +26,135 @@ def set_cancel_event(event: asyncio.Event) -> None:
     _cancel_event_ctx.set(event)
 
 
+def _get_interest_value(interest, key: str):
+    if isinstance(interest, dict):
+        return interest.get(key)
+    return getattr(interest, key, None)
+
+
+def _as_list(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple, set)):
+        return list(value)
+    return []
+
+
+def _dedupe_strings(values) -> list[str]:
+    result = []
+    seen = set()
+    for value in values or []:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(text)
+    return result
+
+
+def _selected_interest_scope(selected_interests: Optional[list]) -> tuple[list[str], list[str]]:
+    """Build the hard search boundary for the current selected interests."""
+    if not selected_interests:
+        return [], []
+
+    keywords = []
+    categories = []
+    for interest in selected_interests:
+        topic = _get_interest_value(interest, "topic")
+        if topic:
+            keywords.append(topic)
+        keywords.extend(_as_list(_get_interest_value(interest, "keywords")))
+        categories.extend(_as_list(_get_interest_value(interest, "categories")))
+
+    return _dedupe_strings(keywords), _dedupe_strings(categories)
+
+
+def _interest_dicts_from_selected(selected_interests: list) -> list[dict]:
+    return [
+        {
+            "topic": _get_interest_value(interest, "topic") or "",
+            "description": _get_interest_value(interest, "description") or "",
+            "keywords": _as_list(_get_interest_value(interest, "keywords")),
+        }
+        for interest in selected_interests
+    ]
+
+
+async def _get_relevance_interest_dicts() -> list[dict]:
+    """Return interests used by relevance checks, scoped to the current run."""
+    selected = _selected_interests_ctx.get()
+    if selected is not None:
+        return _interest_dicts_from_selected(selected)
+
+    from backend.models.database import get_session_factory, UserInterest
+    from sqlalchemy import select
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(UserInterest).where(UserInterest.is_active == True)
+        )
+        interests = result.scalars().all()
+
+    return [
+        {
+            "topic": i.topic,
+            "description": i.description or "",
+            "keywords": i.keywords or [],
+        }
+        for i in interests
+    ]
+
+
+def _constrain_search_to_selected_interests(
+    keywords: Optional[list[str]],
+    categories: Optional[list[str]],
+    selected_interests: Optional[list],
+) -> tuple[list[str], list[str], bool]:
+    """Return search params that cannot escape the selected interests."""
+    requested_keywords = _dedupe_strings(keywords)
+    requested_categories = _dedupe_strings(categories)
+
+    if selected_interests is None:
+        return requested_keywords, requested_categories, False
+
+    allowed_keywords, allowed_categories = _selected_interest_scope(selected_interests)
+    if not selected_interests:
+        return [], [], True
+
+    allowed_keyword_lookup = {kw.casefold(): kw for kw in allowed_keywords}
+    matched_keywords = [
+        allowed_keyword_lookup[kw.casefold()]
+        for kw in requested_keywords
+        if kw.casefold() in allowed_keyword_lookup
+    ]
+    effective_keywords = _dedupe_strings(matched_keywords or allowed_keywords)
+
+    if allowed_categories:
+        allowed_category_lookup = {cat.casefold(): cat for cat in allowed_categories}
+        matched_categories = [
+            allowed_category_lookup[cat.casefold()]
+            for cat in requested_categories
+            if cat.casefold() in allowed_category_lookup
+        ]
+        effective_categories = _dedupe_strings(matched_categories or allowed_categories)
+    else:
+        effective_categories = []
+
+    constrained = (
+        requested_keywords != effective_keywords
+        or requested_categories != effective_categories
+    )
+    return effective_keywords, effective_categories, constrained
+
+
 def check_cancelled():
     """Raise CancelledError if the current task has been cancelled."""
     event = _cancel_event_ctx.get()
@@ -163,13 +292,33 @@ async def search_arxiv(
     check_cancelled()
     logger.info(f"TOOL search_arxiv: keywords={keywords}, categories={categories}, days_back={days_back}")
     try:
-        await _send_progress("fetch", 15, f"Searching arXiv: {', '.join(keywords[:3])}...")
+        selected = _selected_interests_ctx.get()
+        effective_keywords, effective_categories, constrained = _constrain_search_to_selected_interests(
+            keywords=keywords,
+            categories=categories,
+            selected_interests=selected,
+        )
+
+        if selected is not None and not effective_keywords:
+            logger.warning("Refusing broad arXiv search because no selected-interest keywords are available")
+            return json.dumps({
+                "error": "No selected-interest keywords available; refusing to run a broad search.",
+            })
+
+        if constrained:
+            logger.info(
+                "Constrained arXiv search to selected interests: "
+                f"effective_keywords={effective_keywords}, effective_categories={effective_categories}"
+            )
+
+        progress_terms = effective_keywords[:3] or effective_categories[:3] or ["recent papers"]
+        await _send_progress("fetch", 15, f"Searching arXiv: {', '.join(progress_terms)}...")
         from backend.services.arxiv_service import get_arxiv_service
 
         arxiv_service = get_arxiv_service()
         papers = await arxiv_service.search_papers(
-            categories=categories if categories else None,
-            keywords=keywords,
+            categories=effective_categories if effective_categories else None,
+            keywords=effective_keywords if effective_keywords else None,
             days_back=days_back,
             max_results=max_results,
         )
@@ -229,20 +378,13 @@ async def check_relevance(title: str, abstract: str, categories: list[str]) -> s
     try:
         from backend.services.llm_service import get_llm_service
 
-        # Use selected interests from context, not all interests
-        selected = _selected_interests_ctx.get()
-        if selected is not None:
-            interest_dicts = [{"topic": i.get("topic", ""), "description": i.get("description", ""), "keywords": i.get("keywords", [])} for i in selected]
-        else:
-            from backend.models.database import get_session_factory, UserInterest
-            from sqlalchemy import select
-            factory = get_session_factory()
-            async with factory() as session:
-                result = await session.execute(
-                    select(UserInterest).where(UserInterest.is_active == True)
-                )
-                interests = result.scalars().all()
-            interest_dicts = [{"topic": i.topic, "description": i.description or "", "keywords": i.keywords or []} for i in interests]
+        interest_dicts = await _get_relevance_interest_dicts()
+        if not interest_dicts:
+            return json.dumps({
+                "is_relevant": False,
+                "score": 0.0,
+                "reason": "No selected interests available for relevance checking",
+            })
 
         llm_service = get_llm_service()
         check = await llm_service.check_relevance(
@@ -262,7 +404,7 @@ async def analyze_paper(
     authors: list[str],
     categories: list[str],
 ) -> str:
-    """Fully analyze a paper: generate AI summary, key findings, methodology, and relevance score. Use this for papers that pass the relevance check."""
+    """Fully analyze a paper and score relevance against the current selected interests."""
     check_cancelled()
     logger.info(f"TOOL analyze_paper: {arxiv_id} - {title[:50]}...")
     try:
@@ -270,13 +412,28 @@ async def analyze_paper(
         from backend.services.llm_service import get_llm_service
 
         llm_service = get_llm_service()
+        interest_dicts = await _get_relevance_interest_dicts()
         summary = await llm_service.generate_summary(
             title=title, abstract=abstract, authors=authors, categories=categories,
         )
+        if interest_dicts:
+            relevance = await llm_service.check_relevance(
+                title=title,
+                abstract=abstract,
+                categories=categories,
+                interests=interest_dicts,
+            )
+            relevance_score = relevance.score
+            relevance_reason = relevance.reason
+            is_relevant = relevance.is_relevant
+        else:
+            relevance_score = 0.0
+            relevance_reason = "No selected interests available for relevance checking"
+            is_relevant = False
 
         stats = get_stats()
         stats["papers_analyzed"] += 1
-        if summary.relevance_score >= 0.6:
+        if relevance_score >= 0.6:
             stats["papers_relevant"] += 1
 
         return json.dumps({
@@ -285,8 +442,9 @@ async def analyze_paper(
             "summary_zh": summary.summary_zh,
             "key_findings": summary.key_findings,
             "methodology": summary.methodology,
-            "relevance_score": summary.relevance_score,
-            "relevance_reason": summary.relevance_reason,
+            "relevance_score": relevance_score,
+            "relevance_reason": relevance_reason,
+            "is_relevant": is_relevant,
         })
     except Exception as e:
         logger.error(f"analyze_paper failed: {e}")
@@ -315,9 +473,44 @@ async def download_and_save_paper(
         from backend.models.database import get_session_factory, Paper, PaperRecommendation
         from backend.services.vector_store import get_vector_store
         from backend.services.pdf_service import get_pdf_service
-        from backend.services.arxiv_service import get_arxiv_service
+        from backend.services.llm_service import get_llm_service
         from sqlalchemy import select
         from datetime import datetime
+
+        if relevance_score < 0.6:
+            return json.dumps({
+                "status": "skipped",
+                "arxiv_id": arxiv_id,
+                "message": "Paper relevance score is below the save threshold",
+                "relevance_score": relevance_score,
+            })
+
+        interest_dicts = await _get_relevance_interest_dicts()
+        if not interest_dicts:
+            return json.dumps({
+                "status": "skipped",
+                "arxiv_id": arxiv_id,
+                "message": "No selected interests available for save-time relevance gate",
+                "relevance_score": 0.0,
+            })
+
+        relevance = await get_llm_service().check_relevance(
+            title=title,
+            abstract=abstract,
+            categories=categories,
+            interests=interest_dicts,
+        )
+        if not relevance.is_relevant or relevance.score < 0.6:
+            return json.dumps({
+                "status": "skipped",
+                "arxiv_id": arxiv_id,
+                "message": "Paper did not pass the selected-interest save gate",
+                "relevance_score": relevance.score,
+                "relevance_reason": relevance.reason,
+            })
+
+        relevance_score = relevance.score
+        relevance_reason = relevance.reason
 
         await _send_progress("save", 70, f"Saving: {title[:40]}...")
 

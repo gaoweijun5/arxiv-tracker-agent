@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Search, ChevronLeft, ChevronRight, Trash2, ExternalLink, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, ExternalLink, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react'
 import { papersApi } from '../../services/api'
 import type { Paper, PaperListResponse } from '../../types'
 import { format } from 'date-fns'

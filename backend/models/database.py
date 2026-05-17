@@ -1,10 +1,9 @@
 """Database models and connection setup."""
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, JSON, ForeignKey, create_engine, event
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, JSON, ForeignKey
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
-from typing import Optional
 
 
 class Base(DeclarativeBase):

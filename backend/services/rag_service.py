@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Optional
-from langchain_core.messages import HumanMessage, AIMessage
 from loguru import logger
 
 from backend.services.vector_store import get_vector_store

@@ -1,7 +1,7 @@
 """System API endpoints."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel
@@ -116,14 +116,17 @@ async def run_fetch_workflow(
 
         logger.info(f"Agent completed: {result.get('papers_found', 0)} found, {result.get('papers_saved', 0)} saved")
 
-        # Send completion
         if task_id:
-            await send_complete(task_id, {
+            payload = {
                 "papers_found": result.get("papers_found", 0),
                 "papers_relevant": result.get("papers_relevant", 0),
                 "papers_downloaded": result.get("papers_saved", 0),
                 "status": result.get("status", "success"),
-            })
+            }
+            if result.get("status") == "failed":
+                await send_error(task_id, result.get("error") or "Fetch failed")
+            else:
+                await send_complete(task_id, payload)
 
     except Exception as e:
         logger.error(f"Fetch failed: {e}")
@@ -156,11 +159,19 @@ async def trigger_fetch(
     """Manually trigger a paper fetch with options."""
     from backend.models.database import UserInterest
 
-    # Get interests
-    if request.interest_ids:
+    # Get interests. An omitted interest_ids means "all active"; an explicit
+    # empty list means the caller selected nothing and should not fan out.
+    if request.interest_ids is not None:
+        if not request.interest_ids:
+            raise HTTPException(status_code=400, detail="Select at least one interest.")
+
         # Use specific interests
+        interest_ids = list(dict.fromkeys(request.interest_ids))
         result = await db.execute(
-            select(UserInterest).where(UserInterest.id.in_(request.interest_ids))
+            select(UserInterest).where(
+                UserInterest.id.in_(interest_ids),
+                UserInterest.is_active == True,
+            )
         )
     else:
         # Use all active interests

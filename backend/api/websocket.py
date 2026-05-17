@@ -1,7 +1,5 @@
 """WebSocket endpoint for real-time progress updates."""
 
-import asyncio
-import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 
