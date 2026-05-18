@@ -399,7 +399,7 @@ async def get_similar_papers(
             "relevance_score": p.relevance_score,
             "is_bookmarked": p.is_bookmarked,
             "is_read": p.is_read,
-            "similarity_score": round(1 - item["score"], 4),
+            "similarity_score": round(1.0 / (1.0 + item["score"]), 4),
         })
 
     return {"papers": papers, "total": len(papers)}
