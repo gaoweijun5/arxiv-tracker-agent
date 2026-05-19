@@ -262,6 +262,15 @@ export const reportsApi = {
     const { data } = await api.get(`/reports/${id}`)
     return data
   },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/reports/${id}`)
+  },
+
+  batchDelete: async (reportIds: number[]): Promise<{ deleted: number }> => {
+    const { data } = await api.post('/reports/batch-delete', { report_ids: reportIds })
+    return data
+  },
 }
 
 export default api

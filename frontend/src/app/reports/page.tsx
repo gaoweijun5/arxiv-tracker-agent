@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FileText } from 'lucide-react'
+import { FileText, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { format } from 'date-fns'
 import { reportsApi } from '../../services/api'
 import type { ResearchReport } from '../../types'
+import toast from 'react-hot-toast'
 
 export default function ReportsPage() {
   const { id } = useParams<{ id?: string }>()
   const [reports, setReports] = useState<ResearchReport[]>([])
   const [selectedReport, setSelectedReport] = useState<ResearchReport | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadReports()
+    setSelected(new Set())
   }, [id])
 
   const loadReports = async () => {
@@ -39,6 +43,57 @@ export default function ReportsPage() {
     return format(new Date(value), 'MMM d, HH:mm')
   }
 
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === reports.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(reports.map((r) => r.id)))
+    }
+  }
+
+  const handleDelete = async (report: ResearchReport) => {
+    if (!confirm(`Delete "${report.title}"?`)) return
+    try {
+      await reportsApi.delete(report.id)
+      setReports((prev) => prev.filter((r) => r.id !== report.id))
+      if (selectedReport?.id === report.id) {
+        setSelectedReport(reports.find((r) => r.id !== report.id) || null)
+      }
+      toast.success('Report deleted')
+    } catch (error) {
+      toast.error('Failed to delete report')
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} selected reports?`)) return
+
+    setDeleting(true)
+    try {
+      const result = await reportsApi.batchDelete(Array.from(selected))
+      setReports((prev) => prev.filter((r) => !selected.has(r.id)))
+      if (selectedReport && selected.has(selectedReport.id)) {
+        setSelectedReport(null)
+      }
+      setSelected(new Set())
+      toast.success(`Deleted ${result.deleted} reports`)
+    } catch (error) {
+      toast.error('Failed to delete reports')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -49,9 +104,21 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Research Reports</h1>
-        <p className="text-sm text-gray-500">A report is generated after every manual or scheduled fetch.</p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Research Reports</h1>
+          <p className="text-sm text-gray-500">A report is generated after every manual or scheduled fetch.</p>
+        </div>
+        {selected.size > 0 && (
+          <button
+            onClick={handleBatchDelete}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {deleting ? 'Deleting...' : `Delete ${selected.size} selected`}
+          </button>
+        )}
       </div>
 
       {reports.length === 0 ? (
@@ -63,33 +130,56 @@ export default function ReportsPage() {
       ) : (
         <div className="grid grid-cols-[280px_1fr] gap-4">
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-3 py-2 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase">
-              History
+            <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 uppercase">History</span>
+              <input
+                type="checkbox"
+                checked={reports.length > 0 && selected.size === reports.length}
+                onChange={toggleSelectAll}
+                className="rounded border-gray-300"
+              />
             </div>
             <div className="divide-y divide-gray-100 max-h-[calc(100vh-180px)] overflow-auto">
               {reports.map((report) => (
-                <Link
+                <div
                   key={report.id}
-                  to={`/reports/${report.id}`}
-                  className={`block px-3 py-3 hover:bg-gray-50 ${
-                    selectedReport?.id === report.id ? 'bg-gray-50' : ''
-                  }`}
+                  className={`px-3 py-3 ${selectedReport?.id === report.id ? 'bg-gray-50' : ''}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                      report.source === 'auto'
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {report.source === 'auto' ? 'Auto' : 'Manual'}
-                    </span>
-                    <span className="text-xs text-gray-400">{formatDate(report.created_at)}</span>
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(report.id)}
+                      onChange={() => toggleSelect(report.id)}
+                      className="rounded border-gray-300 mt-1"
+                    />
+                    <Link
+                      to={`/reports/${report.id}`}
+                      className="flex-1 min-w-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          report.source === 'auto'
+                            ? 'bg-blue-50 text-blue-600'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {report.source === 'auto' ? 'Auto' : 'Manual'}
+                        </span>
+                        <span className="text-xs text-gray-400">{formatDate(report.created_at)}</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 mt-1 line-clamp-2">{report.title}</p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {report.summary || report.status}
+                      </p>
+                    </Link>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(report) }}
+                      className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 shrink-0"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <p className="text-sm font-medium text-gray-900 mt-1 line-clamp-2">{report.title}</p>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                    {report.summary || report.status}
-                  </p>
-                </Link>
+                </div>
               ))}
             </div>
           </div>

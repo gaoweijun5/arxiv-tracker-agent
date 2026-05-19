@@ -109,3 +109,35 @@ async def get_report(report_id: int, db: AsyncSession = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Research report not found")
     return await _report_response(db, report)
+
+
+@router.post("/batch-delete")
+async def batch_delete_reports(request: dict, db: AsyncSession = Depends(get_db)):
+    """Delete multiple reports by IDs."""
+    report_ids = request.get("report_ids", [])
+    if not report_ids:
+        raise HTTPException(status_code=400, detail="No report IDs provided")
+
+    result = await db.execute(select(ResearchReport).where(ResearchReport.id.in_(report_ids)))
+    reports = result.scalars().all()
+
+    deleted = 0
+    for report in reports:
+        await db.delete(report)
+        deleted += 1
+
+    await db.commit()
+    return {"message": f"Deleted {deleted} reports", "deleted": deleted}
+
+
+@router.delete("/{report_id}")
+async def delete_report(report_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a single report."""
+    result = await db.execute(select(ResearchReport).where(ResearchReport.id == report_id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Research report not found")
+
+    await db.delete(report)
+    await db.commit()
+    return {"message": "Report deleted"}
