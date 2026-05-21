@@ -183,54 +183,6 @@ User: "Find papers matching my interests"
 └─────────────────────────────────────────────┘
 ```
 
-## API Endpoints
-
-<details>
-<summary>Click to expand</summary>
-
-### Papers
-- `GET /api/v1/papers` - List papers (supports filtering and sorting)
-- `GET /api/v1/papers/{id}` - Get paper details
-- `DELETE /api/v1/papers/{id}` - Delete paper
-- `POST /api/v1/papers/batch-delete` - Batch delete papers by IDs
-- `PUT /api/v1/papers/{id}/read` - Mark as read
-- `PUT /api/v1/papers/{id}/bookmark` - Toggle bookmark
-- `POST /api/v1/papers/{id}/download` - Download PDF for Q&A
-- `POST /api/v1/papers/search` - Semantic search
-
-### Conversations
-- `POST /api/v1/conversations/ask` - Ask a question about a paper
-- `GET /api/v1/conversations/{paper_id}` - Get conversation history
-- `DELETE /api/v1/conversations/paper/{paper_id}` - Clear chat history
-
-### Reports
-- `GET /api/v1/reports` - List research reports
-- `GET /api/v1/reports/latest` - Get latest research report
-- `GET /api/v1/reports/{id}` - Get one research report
-
-### Interests
-- `GET /api/v1/interests` - List interests
-- `POST /api/v1/interests` - Create interest
-- `PUT /api/v1/interests/{id}` - Update interest
-- `DELETE /api/v1/interests/{id}` - Delete interest
-
-### Recommendations
-- `GET /api/v1/recommendations` - List recommendations
-- `GET /api/v1/recommendations/today` - Today's recommendations
-- `POST /api/v1/recommendations/refresh` - Refresh recommendations
-
-### System
-- `POST /api/v1/system/fetch` - Fetch papers with options
-- `GET /api/v1/system/stats` - System statistics
-- `GET /api/v1/system/fetch-logs` - Fetch history (with source: manual/auto)
-- `GET /api/v1/system/scheduler` - Get scheduler config
-- `PUT /api/v1/system/scheduler` - Update scheduler config
-
-### WebSocket
-- `ws://localhost:8000/ws/progress/{task_id}` - Real-time progress
-
-</details>
-
 ## License
 
 MIT
