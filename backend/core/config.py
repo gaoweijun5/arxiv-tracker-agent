@@ -24,11 +24,18 @@ class Settings(BaseSettings):
     # Vector Store
     chroma_persist_dir: str = "./data/vectors"
 
-    # LLM API (DeepSeek)
+    # LLM Provider: "openai" (DeepSeek/OpenAI-compatible) or "anthropic"
+    llm_provider: str = "openai"
+
+    # LLM API (OpenAI-compatible: DeepSeek, OpenAI, etc.)
     openai_api_key: str = ""
     openai_api_base: str = "https://api.deepseek.com"
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.3
+
+    # Anthropic API
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-20250514"
 
     # Embedding API (OpenAI-compatible, e.g. DashScope, DeepSeek, OpenAI)
     embedding_api_key: str = ""

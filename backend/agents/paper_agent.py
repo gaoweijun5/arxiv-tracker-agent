@@ -3,7 +3,6 @@
 import asyncio
 from typing import Optional
 from langgraph.prebuilt import create_react_agent
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from loguru import logger
 
@@ -40,15 +39,16 @@ When done, provide a brief summary of what you found, analyzed, and saved."""
 def _create_agent():
     """Create the ReAct paper agent."""
     from backend.core.config import get_settings
+    from backend.services.llm_factory import create_llm
     settings = get_settings()
 
-    llm = ChatOpenAI(
-        model=settings.llm_model,
-        temperature=0,
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_api_base,
-        model_kwargs={"extra_body": {"thinking": {"type": "disabled"}}},
-    )
+    llm = create_llm(temperature=0)
+
+    # DeepSeek needs extra_body to disable thinking mode
+    if settings.llm_provider.lower() == "openai":
+        from langchain_openai import ChatOpenAI
+        if isinstance(llm, ChatOpenAI):
+            llm.model_kwargs = {"extra_body": {"thinking": {"type": "disabled"}}}
 
     tools = [
         get_user_interests, get_user_feedback_summary,

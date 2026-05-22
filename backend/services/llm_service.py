@@ -70,12 +70,8 @@ class LLMService:
 
     def __init__(self):
         self.settings = get_settings()
-        self.llm = ChatOpenAI(
-            model=self.settings.llm_model,
-            temperature=self.settings.llm_temperature,
-            api_key=self.settings.openai_api_key,
-            base_url=self.settings.openai_api_base,
-        )
+        from backend.services.llm_factory import create_llm
+        self.llm = create_llm()
         self._setup_chains()
 
     def _setup_chains(self):
