@@ -12,7 +12,7 @@ https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
 
 - **自主论文 Agent** - ReAct Agent 自主决定搜索策略、分析论文、保存最优结果
 - **智能论文发现** - 根据研究兴趣搜索 arXiv，支持自定义日期范围
-- **AI 摘要生成** - 使用 DeepSeek 生成论文摘要、关键发现和中文翻译
+- **AI 摘要生成** - 生成论文摘要、关键发现和中文翻译，支持 OpenAI 兼容接口和 Anthropic 接口
 - **语义推荐** - 基于 DashScope 向量嵌入的论文匹配推荐
 - **研究报告** - 每次手动或定时抓取后生成持久化 Markdown 研究报告
 - **全文问答** - 手动下载论文 PDF 后，基于完整 PDF 内容进行问答
@@ -44,11 +44,17 @@ make setup
 
 ```env
 # === LLM API ===
-OPENAI_API_KEY=sk-your-api-key-here
+# 提供商: "openai" 或 "anthropic"
+LLM_PROVIDER=openai
 
-# 设置你想使用的模型
-OPENAI_API_BASE=https://api.deepseek.com
+# OpenAI 兼容接口
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_API_BASE=your-api-base-here
 LLM_MODEL=deepseek-v4-flash
+
+# Anthropic 接口 
+# ANTHROPIC_API_KEY=sk-ant-your-key-here
+# ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 # === Embedding API ===
 # 语义搜索、推荐和相似论文匹配需要配置该项。
@@ -61,7 +67,7 @@ EMBEDDING_MODEL=text-embedding-v4
 LANGSMITH_API_KEY=your-langsmith-key
 LANGSMITH_PROJECT=Agent
 
-# === Advanced（默认值通常够用）
+# === Advanced
 # DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
 # CHROMA_PERSIST_DIR=./data/vectors
 # ARXIV_MAX_RESULTS=50
@@ -151,7 +157,7 @@ make dev
 │  LangGraph    │ │   Services    │ │   Storage     │
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
-│ (ReAct)       │ │ - DeepSeek    │ │ - ChromaDB    │
+│ (ReAct)       │ │ - LLM API    │ │ - ChromaDB    │
 │               │ │ - RAG 问答    │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
                           │

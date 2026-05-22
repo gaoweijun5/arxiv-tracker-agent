@@ -12,7 +12,7 @@ English | [中文](README_CN.md)
 
 - **Autonomous Paper Agent** - ReAct agent that independently decides search strategy, analyzes papers, and saves the best ones
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
-- **AI Summarization** - Generate summaries, key findings, and Chinese translations using DeepSeek
+- **AI Summarization** - Generate summaries, key findings, and Chinese translations via OpenAI-compatible or Anthropic API
 - **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
 - **Research Reports** - Generate a persistent Markdown research report after every manual or scheduled fetch
 - **Full-text Q&A** - Manually download a paper PDF, then ask questions with full PDF content as context
@@ -42,11 +42,17 @@ This will create `.env`, install all dependencies, and create data directories.
 
 ```env
 # === LLM API ===
-OPENAI_API_KEY=sk-your-api-key-here
+# Provider: "openai" (OpenAI-compatible) or "anthropic"
+LLM_PROVIDER=openai
 
-# Set your Model
-OPENAI_API_BASE=https://api.deepseek.com
+# OpenAI-compatible API
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_API_BASE=your-api-base-here
 LLM_MODEL=deepseek-v4-flash
+
+# Anthropic API 
+# ANTHROPIC_API_KEY=sk-ant-your-key-here
+# ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 # === Embedding API ===
 # Any OpenAI-compatible embedding API works.
@@ -56,7 +62,7 @@ EMBEDDING_MODEL=text-embedding-v4
 
 # === Optional ===
 LANGSMITH_API_KEY=your-langsmith-key
-LANGSMITH_PROJECT=Agent
+LANGSMITH_PROJECT=
 
 # === Advanced (defaults are fine) ===
 # DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
@@ -148,7 +154,7 @@ This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. 
 │  LangGraph    │ │   Services    │ │   Storage     │
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
-│ (ReAct)       │ │ - DeepSeek    │ │ - ChromaDB    │
+│ (ReAct)       │ │ - LLM API    │ │ - ChromaDB    │
 │               │ │ - RAG Q&A     │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
                           │
