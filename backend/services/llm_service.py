@@ -102,13 +102,28 @@ Analyze this paper and provide a structured summary as JSON."""),
         # Relevance checking chain
         relevance_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a research paper relevance checker. Given a paper and user interests,
-determine if the paper is relevant to the user's research interests.
+score how relevant the paper is to the user on a 0-1 scale.
+
+SCORING RUBRIC:
+- 0.9-1.0: Paper directly addresses the user's core topic with matching methods or applications
+- 0.7-0.8: Paper is in the same research area, shares key concepts or techniques
+- 0.5-0.6: Paper is tangentially related, shares some themes but different focus
+- 0.3-0.4: Paper is in a broadly related field but not aligned with user's specific interests
+- 0.0-0.2: Paper is unrelated to the user's interests
+
+For each score dimension, evaluate:
+1. TOPIC MATCH: Does the paper's subject overlap with the user's interests?
+2. METHOD MATCH: Does the paper use techniques relevant to the user's work?
+3. CATEGORY MATCH: Are the arXiv categories aligned with the user's preferred categories?
+4. KEYWORD MATCH: Do the paper's key terms appear in the user's interest keywords?
+
+Combine these dimensions: topic and method matter most, category and keyword are supporting signals.
 
 You MUST respond with valid JSON only, no other text. Use this exact format:
 {{
     "is_relevant": true,
     "score": 0.85,
-    "reason": "explanation of why it is or isn't relevant"
+    "reason": "Brief explanation citing which dimensions match or don't"
 }}"""),
             ("human", """User Research Interests:
 {interests}
@@ -117,7 +132,7 @@ Paper Title: {title}
 Abstract: {abstract}
 Categories: {categories}
 
-Is this paper relevant to the user's interests? Respond as JSON."""),
+Score this paper's relevance to the user's interests. Respond as JSON."""),
         ])
         self.relevance_chain = relevance_prompt | self.llm | StrOutputParser()
 
