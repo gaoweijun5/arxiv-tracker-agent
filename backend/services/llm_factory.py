@@ -6,7 +6,7 @@ from loguru import logger
 from backend.core.config import get_settings
 
 
-def create_llm(temperature: float | None = None) -> BaseChatModel:
+def create_llm(temperature: float | None = None, model_kwargs: dict | None = None) -> BaseChatModel:
     """Create a chat model instance based on the configured provider.
 
     Returns ChatOpenAI for openai-compatible providers (DeepSeek, OpenAI, etc.)
@@ -23,11 +23,10 @@ def create_llm(temperature: float | None = None) -> BaseChatModel:
             raise ValueError("ANTHROPIC_API_KEY is required when llm_provider=anthropic")
 
         logger.info(f"Using Anthropic model: {settings.anthropic_model}")
-        return ChatAnthropic(
-            model_name=settings.anthropic_model,
-            temperature=temp,
-            api_key=settings.anthropic_api_key,
-        )
+        kwargs = {"model_name": settings.anthropic_model, "temperature": temp, "api_key": settings.anthropic_api_key}
+        if model_kwargs:
+            kwargs["default_request_headers"] = model_kwargs
+        return ChatAnthropic(**kwargs)
 
     # Default: OpenAI-compatible (DeepSeek, OpenAI, etc.)
     from langchain_openai import ChatOpenAI
@@ -36,9 +35,12 @@ def create_llm(temperature: float | None = None) -> BaseChatModel:
         raise ValueError("OPENAI_API_KEY is required when llm_provider=openai")
 
     logger.info(f"Using OpenAI-compatible model: {settings.llm_model} @ {settings.openai_api_base}")
-    return ChatOpenAI(
-        model=settings.llm_model,
-        temperature=temp,
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_api_base,
-    )
+    kwargs = {
+        "model": settings.llm_model,
+        "temperature": temp,
+        "api_key": settings.openai_api_key,
+        "base_url": settings.openai_api_base,
+    }
+    if model_kwargs:
+        kwargs["model_kwargs"] = model_kwargs
+    return ChatOpenAI(**kwargs)

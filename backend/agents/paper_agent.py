@@ -42,13 +42,12 @@ def _create_agent():
     from backend.services.llm_factory import create_llm
     settings = get_settings()
 
-    llm = create_llm(temperature=0)
-
     # DeepSeek needs extra_body to disable thinking mode
+    agent_model_kwargs = None
     if settings.llm_provider.lower() == "openai":
-        from langchain_openai import ChatOpenAI
-        if isinstance(llm, ChatOpenAI):
-            llm.model_kwargs = {"extra_body": {"thinking": {"type": "disabled"}}}
+        agent_model_kwargs = {"extra_body": {"thinking": {"type": "disabled"}}}
+
+    llm = create_llm(temperature=0, model_kwargs=agent_model_kwargs)
 
     tools = [
         get_user_interests, get_user_feedback_summary,
