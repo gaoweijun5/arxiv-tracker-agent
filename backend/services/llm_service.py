@@ -4,7 +4,6 @@ import json
 from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from loguru import logger
 
@@ -269,7 +268,12 @@ Create the Markdown research report."""),
             RelevanceCheck object
         """
         interests_text = "\n".join([
-            f"- {i['topic']}: {i.get('description', '')} (Keywords: {', '.join(i.get('keywords', []))})"
+            (
+                f"- {i['topic']}: {i.get('description', '')} "
+                f"(Keywords: {', '.join(i.get('keywords', []) or [])}; "
+                f"Categories: {', '.join(i.get('categories', []) or [])}; "
+                f"Weight: {i.get('weight', 1.0)})"
+            )
             for i in interests
         ])
 

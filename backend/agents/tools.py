@@ -22,7 +22,7 @@ def set_selected_interests(interests: Optional[list]) -> None:
     _selected_interests_ctx.set(interests)
 
 
-def set_cancel_event(event: asyncio.Event) -> None:
+def set_cancel_event(event: Optional[asyncio.Event]) -> None:
     _cancel_event_ctx.set(event)
 
 
@@ -99,7 +99,7 @@ async def _get_relevance_interest_dicts() -> list[dict]:
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(
-            select(UserInterest).where(UserInterest.is_active == True)
+            select(UserInterest).where(UserInterest.is_active.is_(True))
         )
         interests = result.scalars().all()
 
@@ -129,22 +129,34 @@ def _constrain_search_to_selected_interests(
     if not selected_interests:
         return [], [], True
 
+    requested_has_filters = bool(requested_keywords or requested_categories)
+
     allowed_keyword_lookup = {kw.casefold(): kw for kw in allowed_keywords}
-    matched_keywords = [
-        allowed_keyword_lookup[kw.casefold()]
-        for kw in requested_keywords
-        if kw.casefold() in allowed_keyword_lookup
-    ]
-    effective_keywords = _dedupe_strings(matched_keywords or allowed_keywords)
+    if requested_keywords:
+        matched_keywords = [
+            allowed_keyword_lookup[kw.casefold()]
+            for kw in requested_keywords
+            if kw.casefold() in allowed_keyword_lookup
+        ]
+        effective_keywords = _dedupe_strings(matched_keywords or allowed_keywords)
+    elif requested_has_filters:
+        effective_keywords = []
+    else:
+        effective_keywords = allowed_keywords
 
     if allowed_categories:
         allowed_category_lookup = {cat.casefold(): cat for cat in allowed_categories}
-        matched_categories = [
-            allowed_category_lookup[cat.casefold()]
-            for cat in requested_categories
-            if cat.casefold() in allowed_category_lookup
-        ]
-        effective_categories = _dedupe_strings(matched_categories or allowed_categories)
+        if requested_categories:
+            matched_categories = [
+                allowed_category_lookup[cat.casefold()]
+                for cat in requested_categories
+                if cat.casefold() in allowed_category_lookup
+            ]
+            effective_categories = _dedupe_strings(matched_categories or allowed_categories)
+        elif requested_has_filters:
+            effective_categories = []
+        else:
+            effective_categories = allowed_categories
     else:
         effective_categories = []
 
@@ -206,7 +218,7 @@ async def get_user_interests() -> str:
         factory = get_session_factory()
         async with factory() as session:
             result = await session.execute(
-                select(UserInterest).where(UserInterest.is_active == True)
+                select(UserInterest).where(UserInterest.is_active.is_(True))
             )
             interests = result.scalars().all()
 
@@ -244,7 +256,7 @@ async def get_user_feedback_summary() -> str:
 
                 # Filter bookmarked papers by selected categories
                 all_bm = await session.execute(
-                    select(Paper).where(Paper.is_bookmarked == True)
+                    select(Paper).where(Paper.is_bookmarked.is_(True))
                 )
                 bm_papers = [p for p in all_bm.scalars().all()
                              if any(cat in selected_categories for cat in (p.categories or []))]
@@ -252,17 +264,20 @@ async def get_user_feedback_summary() -> str:
                 total = (await session.execute(select(func.count(Paper.id)))).scalar() or 0
                 bookmarked = len(bm_papers)
                 read = (await session.execute(
-                    select(func.count(Paper.id)).where(Paper.is_read == True)
+                    select(func.count(Paper.id)).where(Paper.is_read.is_(True))
                 )).scalar() or 0
             else:
                 bm_result = await session.execute(
-                    select(Paper).where(Paper.is_bookmarked == True).order_by(Paper.created_at.desc()).limit(10)
+                    select(Paper)
+                    .where(Paper.is_bookmarked.is_(True))
+                    .order_by(Paper.created_at.desc())
+                    .limit(10)
                 )
                 bm_papers = bm_result.scalars().all()
                 total = (await session.execute(select(func.count(Paper.id)))).scalar() or 0
                 bookmarked = len(bm_papers)
                 read = (await session.execute(
-                    select(func.count(Paper.id)).where(Paper.is_read == True)
+                    select(func.count(Paper.id)).where(Paper.is_read.is_(True))
                 )).scalar() or 0
 
             # Categories from filtered bookmarked papers
@@ -305,10 +320,10 @@ async def search_arxiv(
             selected_interests=selected,
         )
 
-        if selected is not None and not effective_keywords:
-            logger.warning("Refusing broad arXiv search because no selected-interest keywords are available")
+        if selected is not None and not effective_keywords and not effective_categories:
+            logger.warning("Refusing broad arXiv search because no selected-interest search scope is available")
             return json.dumps({
-                "error": "No selected-interest keywords available; refusing to run a broad search.",
+                "error": "No selected-interest keywords or categories available; refusing to run a broad search.",
             })
 
         if constrained:

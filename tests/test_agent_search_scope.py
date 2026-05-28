@@ -125,3 +125,46 @@ async def test_search_arxiv_tool_sends_only_selected_scope(monkeypatch):
         "days_back": 3,
         "max_results": 10,
     }
+
+
+@pytest.mark.asyncio
+async def test_search_arxiv_tool_allows_selected_category_only_scope(monkeypatch):
+    calls = {}
+
+    class FakeArxivService:
+        async def search_papers(self, categories, keywords, days_back, max_results):
+            calls["categories"] = categories
+            calls["keywords"] = keywords
+            calls["days_back"] = days_back
+            calls["max_results"] = max_results
+            return []
+
+    import backend.services.arxiv_service as arxiv_service_module
+
+    monkeypatch.setattr(
+        arxiv_service_module,
+        "get_arxiv_service",
+        lambda: FakeArxivService(),
+    )
+    tools.set_selected_interests([
+        {
+            "topic": "large language model agents",
+            "keywords": ["tool use"],
+            "categories": ["cs.AI"],
+        }
+    ])
+
+    result = await tools.search_arxiv.ainvoke({
+        "keywords": [],
+        "categories": ["cs.AI"],
+        "days_back": 3,
+        "max_results": 10,
+    })
+
+    assert json.loads(result) == []
+    assert calls == {
+        "categories": ["cs.AI"],
+        "keywords": None,
+        "days_back": 3,
+        "max_results": 10,
+    }
