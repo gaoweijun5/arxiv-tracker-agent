@@ -49,6 +49,8 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-api-key-here
 OPENAI_API_BASE=your-api-base-here
 LLM_MODEL=deepseek-v4-flash
+# Optional: use a separate tool-call-capable model for Fetch Papers agent
+# LLM_AGENT_MODEL=deepseek-v4-flash
 
 # Anthropic API 
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
@@ -133,6 +135,10 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 **Fetch returns 0 papers or fails**
 
 This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. arXiv limits the number of requests from the same IP. If you've been testing frequently, wait 10-30 minutes before trying again. The system serializes arXiv traffic, waits at least 3 seconds between requests, and backs off after 403/429 responses.
+
+**Fetch fails with `'str' object has no attribute 'model_dump'`**
+
+This usually means the OpenAI-compatible LLM endpoint failed during agent tool calling. Use a tool-call-capable chat model for the fetch agent, for example `LLM_AGENT_MODEL=deepseek-v4-flash`, instead of a reasoning-only model such as `deepseek-reasoner`. The backend also falls back to a sequential compatibility workflow when this provider-side tool-calling error is detected.
 
 ## Architecture
 

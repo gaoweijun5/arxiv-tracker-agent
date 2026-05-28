@@ -51,6 +51,8 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-api-key-here
 OPENAI_API_BASE=your-api-base-here
 LLM_MODEL=deepseek-v4-flash
+# 可选：Fetch Papers Agent 单独使用支持工具调用的模型
+# LLM_AGENT_MODEL=deepseek-v4-flash
 
 # Anthropic 接口 
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
@@ -136,6 +138,10 @@ make dev
 **Fetch 搜不到论文或返回失败**
 
 通常是 arXiv API 限流（HTTP 429）导致的，不是系统 bug。arXiv 对同一 IP 的请求频率有限制，如果频繁测试，需等待 10-30 分钟后再试。系统会串行化 arXiv 请求，请求间至少间隔 3 秒，并在遇到 403/429 后进入退避。
+
+**Fetch 报错 `'str' object has no attribute 'model_dump'`**
+
+通常是 OpenAI-compatible 接口在 Agent 工具调用阶段不兼容导致的。请给抓取 Agent 使用支持 tool calling 的聊天模型，例如 `LLM_AGENT_MODEL=deepseek-v4-flash`，不要让抓取 Agent 直接使用 `deepseek-reasoner` 这类推理模型。后端检测到这类 provider 工具调用错误时，也会自动回退到顺序执行的兼容抓取流程。
 
 ## 系统架构
 

@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_api_base: str = "https://api.deepseek.com"
     llm_model: str = "gpt-4o-mini"
+    llm_agent_model: str = ""
     llm_temperature: float = 0.3
 
     # Anthropic API
