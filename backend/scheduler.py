@@ -16,18 +16,16 @@ async def daily_paper_fetch():
     logger.info("Starting daily paper fetch...")
 
     try:
-        from backend.models.database import get_session_factory, UserInterest, FetchLog
+        from backend.models.database import get_session_factory, UserInterest
         from backend.agents.paper_agent import run_paper_agent
-        from backend.services.report_service import get_report_service
         from sqlalchemy import select
-        from datetime import datetime
 
         factory = get_session_factory()
 
         # Read interests in a short session
         async with factory() as session:
             result = await session.execute(
-                select(UserInterest).where(UserInterest.is_active == True)
+                select(UserInterest).where(UserInterest.is_active.is_(True))
             )
             interests = result.scalars().all()
 
@@ -36,7 +34,6 @@ async def daily_paper_fetch():
             return
 
         interests_data = [i.to_dict() for i in interests]
-        topics = [i.topic for i in interests]
 
         # Read search parameters from scheduler config
         config = await get_scheduler_config()
@@ -46,37 +43,16 @@ async def daily_paper_fetch():
             interests_data=interests_data,
             days_back=config.get("days_back", 7),
             max_results=config.get("max_results", 30),
+            source="auto",
             task_id=None,
         )
 
-        # Write fetch log in a fresh session
-        async with factory() as session:
-            log = FetchLog(
-                fetch_date=datetime.utcnow(),
-                source="auto",
-                categories_fetched=topics,
-                papers_found=agent_result.get("papers_found", 0),
-                papers_relevant=agent_result.get("papers_relevant", 0),
-                papers_downloaded=0,
-                status=agent_result.get("status", "success"),
-                error_message=agent_result.get("error"),
-            )
-            session.add(log)
-            await session.flush()
-            fetch_log_id = log.id
-            await session.commit()
-
-            try:
-                await get_report_service().generate_fetch_report(
-                    fetch_log_id=fetch_log_id,
-                    agent_result=agent_result,
-                    source="auto",
-                    interests_data=[i.to_dict() for i in interests],
-                )
-            except Exception as e:
-                logger.error(f"Daily research report generation failed: {e}")
-
-            logger.info(f"Daily fetch complete: {log.papers_found} found, {log.papers_relevant} relevant")
+        logger.info(
+            "Daily fetch complete: "
+            f"{agent_result.get('papers_found', 0)} found, "
+            f"{agent_result.get('papers_relevant', 0)} relevant, "
+            f"report_id={agent_result.get('report_id')}"
+        )
 
     except Exception as e:
         logger.error(f"Daily paper fetch failed: {e}")
@@ -100,8 +76,8 @@ async def cleanup_old_papers():
                 select(Paper).where(
                     and_(
                         Paper.created_at < cutoff,
-                        Paper.is_bookmarked == False,
-                        Paper.is_read == True,
+                        Paper.is_bookmarked.is_(False),
+                        Paper.is_read.is_(True),
                     )
                 )
             )

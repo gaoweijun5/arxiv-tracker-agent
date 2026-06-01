@@ -42,15 +42,15 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(func.count(Paper.id)))
     total_papers = result.scalar() or 0
 
-    result = await db.execute(select(func.count(Paper.id)).where(Paper.is_read == False))
+    result = await db.execute(select(func.count(Paper.id)).where(Paper.is_read.is_(False)))
     unread_papers = result.scalar() or 0
 
-    result = await db.execute(select(func.count(Paper.id)).where(Paper.is_bookmarked == True))
+    result = await db.execute(select(func.count(Paper.id)).where(Paper.is_bookmarked.is_(True)))
     bookmarked_papers = result.scalar() or 0
 
     # Interest stats
     result = await db.execute(
-        select(func.count(UserInterest.id)).where(UserInterest.is_active == True)
+        select(func.count(UserInterest.id)).where(UserInterest.is_active.is_(True))
     )
     total_interests = result.scalar() or 0
 
@@ -82,53 +82,21 @@ async def run_fetch_workflow(
     task_id: str = None,
     cancel_event: asyncio.Event = None,
 ):
-    """Background task to run the autonomous paper agent."""
+    """Background task to run the fetch workflow."""
     from backend.agents.paper_agent import run_paper_agent
-    from backend.models.database import get_session_factory, FetchLog
     from backend.api.websocket import send_complete, send_error
-    from backend.services.report_service import get_report_service
 
     logger.info(f"Starting paper agent (days_back={days_back}, max_results={max_results})")
-    report_id = None
 
     try:
         result = await run_paper_agent(
             interests_data=interests_data,
             days_back=days_back,
             max_results=max_results,
+            source="manual",
             task_id=task_id,
             cancel_event=cancel_event,
         )
-
-        # Log the fetch
-        factory = get_session_factory()
-        async with factory() as db:
-            log = FetchLog(
-                fetch_date=datetime.utcnow(),
-                source="manual",
-                categories_fetched=[i.get("topic") for i in interests_data],
-                papers_found=result.get("papers_found", 0),
-                papers_relevant=result.get("papers_relevant", 0),
-                papers_downloaded=0,
-                status=result.get("status", "success"),
-                error_message=result.get("error"),
-            )
-            db.add(log)
-            await db.flush()
-            fetch_log_id = log.id
-            await db.commit()
-
-        try:
-            await _send_report_progress(task_id)
-            report = await get_report_service().generate_fetch_report(
-                fetch_log_id=fetch_log_id,
-                agent_result=result,
-                source="manual",
-                interests_data=interests_data,
-            )
-            report_id = report.id
-        except Exception as e:
-            logger.error(f"Research report generation failed: {e}")
 
         logger.info(f"Agent completed: {result.get('papers_found', 0)} found, {result.get('papers_saved', 0)} saved")
 
@@ -138,7 +106,7 @@ async def run_fetch_workflow(
                 "papers_relevant": result.get("papers_relevant", 0),
                 "papers_saved": result.get("papers_saved", 0),
                 "papers_downloaded": 0,
-                "report_id": report_id,
+                "report_id": result.get("report_id"),
                 "status": result.get("status", "success"),
             }
             if result.get("status") == "failed":
@@ -151,53 +119,6 @@ async def run_fetch_workflow(
 
         if task_id:
             await send_error(task_id, str(e))
-
-        factory = get_session_factory()
-        async with factory() as db:
-            log = FetchLog(
-                fetch_date=datetime.utcnow(),
-                source="manual",
-                categories_fetched=[],
-                papers_found=0,
-                papers_relevant=0,
-                papers_downloaded=0,
-                status="failed",
-                error_message=str(e),
-            )
-            db.add(log)
-            await db.flush()
-            fetch_log_id = log.id
-            await db.commit()
-
-        try:
-            report = await get_report_service().generate_fetch_report(
-                fetch_log_id=fetch_log_id,
-                agent_result={
-                    "status": "failed",
-                    "error": str(e),
-                    "papers_found": 0,
-                    "papers_analyzed": 0,
-                    "papers_relevant": 0,
-                    "papers_saved": 0,
-                    "saved_paper_ids": [],
-                },
-                source="manual",
-                interests_data=interests_data,
-            )
-            report_id = report.id
-        except Exception as report_error:
-            logger.error(f"Failed to generate failure research report: {report_error}")
-
-
-async def _send_report_progress(task_id: str | None) -> None:
-    if not task_id:
-        return
-    try:
-        from backend.api.websocket import send_progress
-
-        await send_progress(task_id, "report", 92, "Generating research report...")
-    except Exception as e:
-        logger.warning(f"Failed to send report progress: {e}")
 
 
 @router.post("/fetch")
@@ -220,13 +141,13 @@ async def trigger_fetch(
         result = await db.execute(
             select(UserInterest).where(
                 UserInterest.id.in_(interest_ids),
-                UserInterest.is_active == True,
+                UserInterest.is_active.is_(True),
             )
         )
     else:
         # Use all active interests
         result = await db.execute(
-            select(UserInterest).where(UserInterest.is_active == True)
+            select(UserInterest).where(UserInterest.is_active.is_(True))
         )
     interests = result.scalars().all()
 
@@ -294,7 +215,7 @@ async def cancel_fetch(task_id: str):
 @router.get("/interests")
 async def list_interests_for_fetch(db: AsyncSession = Depends(get_db)):
     """List all interests for fetch selection."""
-    result = await db.execute(select(UserInterest).where(UserInterest.is_active == True))
+    result = await db.execute(select(UserInterest).where(UserInterest.is_active.is_(True)))
     interests = result.scalars().all()
 
     return [

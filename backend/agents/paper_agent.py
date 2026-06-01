@@ -3,7 +3,7 @@
 import asyncio
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -47,6 +47,8 @@ class PaperAgentState(TypedDict, total=False):
     stats: dict
     days_back: int
     max_results: int
+    source: str
+    generate_report: bool
     current_plan_index: int
     current_attempt_index: int
     current_attempt_found: bool
@@ -54,6 +56,10 @@ class PaperAgentState(TypedDict, total=False):
     current_candidate_index: int
     current_analyze_index: int
     current_save_index: int
+    fetch_log_id: int | None
+    report_id: int | None
+    report_status: str | None
+    report_error: str | None
     status: str
     final_message: str
 
@@ -89,7 +95,10 @@ def _create_workflow():
     workflow.add_node("init_save_loop", _init_save_loop)
     workflow.add_node("save_one_paper", _save_one_paper)
     workflow.add_node("mark_save_limit", _mark_save_limit)
-    workflow.add_node("finalize", _finalize)
+    workflow.add_node("finalize_discovery", _finalize_discovery)
+    workflow.add_node("persist_fetch_log", _persist_fetch_log)
+    workflow.add_node("generate_report", _generate_report)
+    workflow.add_node("complete_run", _complete_run)
 
     workflow.set_entry_point("load_context")
     workflow.add_conditional_edges(
@@ -97,7 +106,7 @@ def _create_workflow():
         _route_after_load_context,
         {
             "has_interests": "build_query_plan",
-            "finalize": "finalize",
+            "finalize": "finalize_discovery",
         },
     )
     workflow.add_conditional_edges(
@@ -105,7 +114,7 @@ def _create_workflow():
         _route_after_build_query_plan,
         {
             "has_query_plans": "init_search_loop",
-            "finalize": "finalize",
+            "finalize": "finalize_discovery",
         },
     )
     workflow.add_edge("init_search_loop", "search_attempt")
@@ -177,7 +186,7 @@ def _create_workflow():
         {
             "save_paper": "save_one_paper",
             "mark_save_limit": "mark_save_limit",
-            "finalize": "finalize",
+            "finalize": "finalize_discovery",
         },
     )
     workflow.add_conditional_edges(
@@ -186,11 +195,21 @@ def _create_workflow():
         {
             "save_paper": "save_one_paper",
             "mark_save_limit": "mark_save_limit",
-            "finalize": "finalize",
+            "finalize": "finalize_discovery",
         },
     )
-    workflow.add_edge("mark_save_limit", "finalize")
-    workflow.add_edge("finalize", END)
+    workflow.add_edge("mark_save_limit", "finalize_discovery")
+    workflow.add_edge("finalize_discovery", "persist_fetch_log")
+    workflow.add_conditional_edges(
+        "persist_fetch_log",
+        _route_after_persist_fetch_log,
+        {
+            "generate_report": "generate_report",
+            "complete_run": "complete_run",
+        },
+    )
+    workflow.add_edge("generate_report", "complete_run")
+    workflow.add_edge("complete_run", END)
     return workflow.compile()
 
 
@@ -217,6 +236,12 @@ def _ensure_state_defaults(state: PaperAgentState) -> PaperAgentState:
     state.setdefault("errors", [])
     state.setdefault("fallbacks_used", [])
     state.setdefault("stats", _empty_stats())
+    state.setdefault("source", "manual")
+    state.setdefault("generate_report", True)
+    state.setdefault("fetch_log_id", None)
+    state.setdefault("report_id", None)
+    state.setdefault("report_status", None)
+    state.setdefault("report_error", None)
     return state
 
 
@@ -1260,7 +1285,7 @@ async def _save_candidate(candidate: dict) -> dict:
                 str(candidate.get("published_date") or "").replace("Z", "+00:00")
             )
         except Exception:
-            pub_date = datetime.utcnow()
+            pub_date = datetime.now(UTC).replace(tzinfo=None)
 
         paper = Paper(
             arxiv_id=candidate["arxiv_id"],
@@ -1317,7 +1342,7 @@ async def _save_candidate(candidate: dict) -> dict:
     }
 
 
-async def _finalize(state: PaperAgentState) -> PaperAgentState:
+async def _finalize_discovery(state: PaperAgentState) -> PaperAgentState:
     check_cancelled()
     state = _ensure_state_defaults(state)
     stats = state.get("stats", _empty_stats())
@@ -1347,18 +1372,125 @@ async def _finalize(state: PaperAgentState) -> PaperAgentState:
 
     state["status"] = status
     state["final_message"] = final_message
-    await _send_progress("complete", 95, f"Fetch completed: saved {stats.get('papers_saved', 0)} papers")
     return state
+
+
+async def _persist_fetch_log(state: PaperAgentState) -> PaperAgentState:
+    check_cancelled()
+    state = _ensure_state_defaults(state)
+
+    if not state.get("interests") and state.get("fetch_log_id") is None:
+        return state
+
+    try:
+        from backend.models.database import FetchLog, get_session_factory
+
+        topics = [i.get("topic") for i in state.get("interests_data", []) if i.get("topic")]
+        stats = state.get("stats", _empty_stats())
+        factory = get_session_factory()
+        async with factory() as session:
+            log = FetchLog(
+                fetch_date=datetime.now(UTC).replace(tzinfo=None),
+                source=state.get("source", "manual"),
+                categories_fetched=topics,
+                papers_found=stats.get("papers_found", 0),
+                papers_relevant=stats.get("papers_relevant", 0),
+                papers_downloaded=0,
+                status=state.get("status", "success"),
+                error_message=_result_error_message(state),
+            )
+            session.add(log)
+            await session.flush()
+            state["fetch_log_id"] = log.id
+            await session.commit()
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        _record_error(state, stage="persist_fetch_log", message=f"Failed to write fetch log: {e}")
+        state["fetch_log_id"] = None
+
+    return state
+
+
+def _route_after_persist_fetch_log(state: PaperAgentState) -> str:
+    if state.get("generate_report", True) and state.get("fetch_log_id") is not None:
+        return "generate_report"
+    return "complete_run"
+
+
+async def _generate_report(state: PaperAgentState) -> PaperAgentState:
+    check_cancelled()
+    state = _ensure_state_defaults(state)
+
+    await _send_progress("report", 92, "Generating research report...")
+
+    try:
+        from backend.services.report_service import get_report_service
+
+        report = await get_report_service().generate_fetch_report(
+            fetch_log_id=state.get("fetch_log_id"),
+            agent_result=_result_payload_from_state(state),
+            source=state.get("source", "manual"),
+            interests_data=state.get("interests_data", []),
+        )
+        state["report_id"] = report.id
+        state["report_status"] = report.status
+        state["report_error"] = report.error_message
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        _record_error(state, stage="generate_report", message=f"Research report generation failed: {e}")
+        state["report_id"] = None
+        state["report_status"] = "failed"
+        state["report_error"] = str(e)
+
+    return state
+
+
+async def _complete_run(state: PaperAgentState) -> PaperAgentState:
+    check_cancelled()
+    state = _ensure_state_defaults(state)
+    await _send_progress("complete", 95, f"Fetch completed: saved {state['stats'].get('papers_saved', 0)} papers")
+    return state
+
+
+def _result_error_message(state: PaperAgentState) -> Optional[str]:
+    errors = state.get("errors") or []
+    if not errors:
+        return None
+    return errors[0].get("message")
+
+
+def _result_payload_from_state(state: PaperAgentState) -> dict:
+    stats = state.get("stats", _empty_stats())
+    result = {
+        "status": state.get("status", "success"),
+        "papers_found": stats.get("papers_found", 0),
+        "papers_analyzed": stats.get("papers_analyzed", 0),
+        "papers_relevant": stats.get("papers_relevant", 0),
+        "papers_saved": stats.get("papers_saved", 0),
+        "saved_paper_ids": stats.get("saved_paper_ids", []),
+        "final_message": state.get("final_message", ""),
+        "decisions": state.get("decisions", []),
+        "errors": state.get("errors", []),
+        "fallbacks_used": state.get("fallbacks_used", []),
+    }
+    error_message = _result_error_message(state)
+    if error_message:
+        result["error"] = error_message
+    return result
 
 
 async def run_paper_agent(
     interests_data: list[dict],
     days_back: int = 7,
     max_results: int = 30,
+    source: str = "manual",
+    generate_report: bool = True,
     task_id: Optional[str] = None,
     cancel_event: Optional[asyncio.Event] = None,
 ) -> dict:
-    """Run the explicit paper discovery workflow."""
+    """Run the fetch workflow, including discovery, fetch logging, and report generation."""
     set_task_id(task_id)
     set_selected_interests(interests_data)
     set_cancel_event(cancel_event)
@@ -1370,6 +1502,8 @@ async def run_paper_agent(
         "interests_data": interests_data or [],
         "days_back": days_back,
         "max_results": max_results,
+        "source": source,
+        "generate_report": generate_report,
         "stats": stats,
         "decisions": [],
         "errors": [],
@@ -1389,34 +1523,50 @@ async def run_paper_agent(
         result_stats = result_state.get("stats", stats)
         logger.info(f"Paper workflow completed. Stats: {result_stats}")
 
-        return {
-            "status": result_state.get("status", "success"),
-            "papers_found": result_stats.get("papers_found", 0),
-            "papers_analyzed": result_stats.get("papers_analyzed", 0),
-            "papers_relevant": result_stats.get("papers_relevant", 0),
-            "papers_saved": result_stats.get("papers_saved", 0),
-            "saved_paper_ids": result_stats.get("saved_paper_ids", []),
-            "final_message": result_state.get("final_message", ""),
-            "decisions": result_state.get("decisions", []),
-            "errors": result_state.get("errors", []),
-            "fallbacks_used": result_state.get("fallbacks_used", []),
-        }
+        result = _result_payload_from_state(result_state)
+        result["fetch_log_id"] = result_state.get("fetch_log_id")
+        result["report_id"] = result_state.get("report_id")
+        result["report_status"] = result_state.get("report_status")
+        result["report_error"] = result_state.get("report_error")
+        return result
 
     except asyncio.CancelledError as e:
         error_msg = str(e) or "Agent was cancelled"
         logger.error(f"Paper workflow cancelled: {error_msg}")
-        return _failed_result(error_msg, stats)
+        result = _failed_result(error_msg, stats, source=source)
+        fetch_log_id, report_id, report_status, report_error = await _persist_failure_artifacts(
+            error_msg=error_msg,
+            interests_data=interests_data or [],
+            source=source,
+            generate_report=generate_report,
+        )
+        result["fetch_log_id"] = fetch_log_id
+        result["report_id"] = report_id
+        result["report_status"] = report_status
+        result["report_error"] = report_error
+        return result
     except Exception as e:
         error_msg = str(e) or type(e).__name__
         if not error_msg or error_msg == "CancelledError":
             error_msg = "Agent timed out or was cancelled"
         logger.exception(f"Paper workflow failed: {error_msg}")
-        return _failed_result(error_msg, stats)
+        result = _failed_result(error_msg, stats, source=source)
+        fetch_log_id, report_id, report_status, report_error = await _persist_failure_artifacts(
+            error_msg=error_msg,
+            interests_data=interests_data or [],
+            source=source,
+            generate_report=generate_report,
+        )
+        result["fetch_log_id"] = fetch_log_id
+        result["report_id"] = report_id
+        result["report_status"] = report_status
+        result["report_error"] = report_error
+        return result
     finally:
         set_cancel_event(None)
 
 
-def _failed_result(error_msg: str, stats: dict) -> dict:
+def _failed_result(error_msg: str, stats: dict, source: str = "manual") -> dict:
     return {
         "status": "failed",
         "error": error_msg,
@@ -1428,7 +1578,75 @@ def _failed_result(error_msg: str, stats: dict) -> dict:
         "decisions": [],
         "errors": [{"stage": "workflow", "message": error_msg, "recoverable": False}],
         "fallbacks_used": [],
+        "fetch_log_id": None,
+        "report_id": None,
+        "report_status": None,
+        "report_error": None,
+        "source": source,
     }
+
+
+async def _persist_failure_artifacts(
+    *,
+    error_msg: str,
+    interests_data: list[dict],
+    source: str,
+    generate_report: bool,
+) -> tuple[int | None, int | None, str | None, str | None]:
+    fetch_log_id: int | None = None
+    report_id: int | None = None
+    report_status: str | None = None
+    report_error: str | None = None
+
+    try:
+        from backend.models.database import FetchLog, get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            log = FetchLog(
+                fetch_date=datetime.now(UTC).replace(tzinfo=None),
+                source=source,
+                categories_fetched=[i.get("topic") for i in interests_data if i.get("topic")],
+                papers_found=0,
+                papers_relevant=0,
+                papers_downloaded=0,
+                status="failed",
+                error_message=error_msg,
+            )
+            session.add(log)
+            await session.flush()
+            fetch_log_id = log.id
+            await session.commit()
+    except Exception as e:
+        logger.error(f"Failed to persist failure fetch log: {e}")
+
+    if generate_report and fetch_log_id is not None:
+        try:
+            from backend.services.report_service import get_report_service
+
+            report = await get_report_service().generate_fetch_report(
+                fetch_log_id=fetch_log_id,
+                agent_result={
+                    "status": "failed",
+                    "error": error_msg,
+                    "papers_found": 0,
+                    "papers_analyzed": 0,
+                    "papers_relevant": 0,
+                    "papers_saved": 0,
+                    "saved_paper_ids": [],
+                },
+                source=source,
+                interests_data=interests_data,
+            )
+            report_id = report.id
+            report_status = report.status
+            report_error = report.error_message
+        except Exception as e:
+            logger.error(f"Failed to generate failure report: {e}")
+            report_status = "failed"
+            report_error = str(e)
+
+    return fetch_log_id, report_id, report_status, report_error
 
 
 def get_paper_workflow():
