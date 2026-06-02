@@ -4,7 +4,8 @@
 
 基于 LangChain、LangGraph ReAct Agent 构建的 AI 论文追踪与智能推荐系统。
 
-https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
+![项目截图1](./demo/demo1.png)
+![项目截图2](./demo/demo2.png)
 
 [English](README.md) | 中文
 
