@@ -137,17 +137,17 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-4 border border-gray-200">
+      <div className="bg-white rounded-lg w-full max-w-md mx-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-sm font-medium text-gray-900">Fetch Papers</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded" disabled={fetching}>
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="text-sm font-medium text-[#1A1A1A]">Fetch Papers</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300" disabled={fetching}>
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="px-6 pb-6 space-y-4">
           {/* Interests */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Topics</label>
@@ -160,7 +160,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
                 {interests.map((interest) => (
                   <label
                     key={interest.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-300"
                   >
                     <input
                       type="checkbox"
@@ -181,7 +181,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
             <select
               value={daysBack}
               onChange={(e) => setDaysBack(parseInt(e.target.value))}
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors duration-300"
               disabled={fetching}
             >
               <option value={1}>Last 1 day</option>
@@ -198,7 +198,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
             <select
               value={maxResults}
               onChange={(e) => setMaxResults(parseInt(e.target.value))}
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors duration-300"
               disabled={fetching}
             >
               <option value={10}>10 papers</option>
@@ -210,14 +210,14 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
 
           {/* Progress */}
           {fetching && progress && (
-            <div className="bg-gray-50 rounded p-3">
+            <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-600">{progress.message}</span>
-                <span className="text-xs font-medium text-gray-900">{progress.progress}%</span>
+                <span className="text-xs font-medium text-[#1A1A1A]">{progress.progress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
-                  className="bg-gray-900 h-1.5 rounded-full transition-all duration-300"
+                  className="bg-[#3B82F6] h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${progress.progress}%` }}
                 />
               </div>
@@ -226,7 +226,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
 
           {/* Result */}
           {result && (
-            <div className={`rounded p-3 text-sm ${
+            <div className={`rounded-lg p-4 text-sm ${
               result.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
             }`}>
               <div>
@@ -238,7 +238,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
                 <Link
                   to={`/reports/${result.report_id}`}
                   onClick={onClose}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-green-800 hover:text-green-950"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-green-800 hover:text-green-950 transition-colors duration-300"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   View research report
@@ -249,10 +249,10 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+        <div className="flex justify-end gap-2 px-6 py-4">
           <button
             onClick={result ? onClose : handleCancel}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300"
           >
             {result ? 'Close' : 'Cancel'}
           </button>
@@ -260,7 +260,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
             <button
               onClick={handleFetch}
               disabled={fetching || selectedInterests.length === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-800 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A1A1A] text-white text-sm font-medium rounded-lg hover:bg-[#3B82F6] disabled:opacity-40 transition-all duration-300"
             >
               {fetching ? (
                 <>

@@ -102,14 +102,14 @@ export default function InterestsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Interests</h1>
+          <h1 className="text-xl font-semibold text-[#1A1A1A]">Interests</h1>
           <p className="text-sm text-gray-500">Configure research topics for paper matching</p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A1A1A] text-white text-sm font-medium rounded-lg hover:bg-[#3B82F6] transition-all duration-300"
         >
           <Plus className="w-3.5 h-3.5" />
           Add
@@ -118,17 +118,17 @@ export default function InterestsPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-lg mb-4">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <h2 className="text-sm font-medium text-gray-900">
+        <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg mb-6">
+          <div className="flex items-center justify-between px-6 py-4">
+            <h2 className="text-sm font-medium text-[#1A1A1A]">
               {editingId ? 'Edit Interest' : 'New Interest'}
             </h2>
-            <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded">
+            <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300">
               <X className="w-4 h-4 text-gray-400" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Topic *</label>
               <input
@@ -137,7 +137,7 @@ export default function InterestsPage() {
                 onChange={(e) => setTopic(e.target.value)}
                 required
                 placeholder="e.g., Large Language Models"
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors duration-300"
               />
             </div>
 
@@ -148,7 +148,7 @@ export default function InterestsPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
                 rows={2}
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400 resize-none"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 resize-none transition-colors duration-300"
               />
             </div>
 
@@ -159,7 +159,7 @@ export default function InterestsPage() {
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 placeholder="e.g., transformer, attention, fine-tuning"
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-gray-400"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors duration-300"
               />
             </div>
 
@@ -171,9 +171,9 @@ export default function InterestsPage() {
                     key={cat}
                     type="button"
                     onClick={() => toggleCategory(cat)}
-                    className={`px-2 py-1 text-xs rounded ${
+                    className={`px-2 py-1 text-xs rounded-lg transition-all duration-300 ${
                       categories.includes(cat)
-                        ? 'bg-gray-900 text-white'
+                        ? 'bg-[#1A1A1A] text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -202,13 +202,13 @@ export default function InterestsPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-gray-900 text-white text-sm rounded hover:bg-gray-800"
+                className="px-4 py-2 bg-[#1A1A1A] text-white text-sm rounded-lg hover:bg-[#3B82F6] transition-all duration-300"
               >
                 {editingId ? 'Update' : 'Create'}
               </button>
@@ -218,18 +218,18 @@ export default function InterestsPage() {
       )}
 
       {/* Interests Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
         {loading ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-500">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : interests.length === 0 ? (
-          <div className="px-4 py-8 text-center">
+          <div className="px-6 py-8 text-center">
             <p className="text-sm text-gray-500">No interests configured</p>
             <p className="text-xs text-gray-400 mt-1">Add interests to get personalized recommendations</p>
           </div>
         ) : (
           <table>
             <thead>
-              <tr className="bg-gray-50">
+              <tr>
                 <th>Topic</th>
                 <th>Keywords</th>
                 <th className="w-20">Categories</th>
@@ -242,7 +242,7 @@ export default function InterestsPage() {
               {interests.map((interest) => (
                 <tr key={interest.id}>
                   <td>
-                    <p className="text-sm font-medium text-gray-900">{interest.topic}</p>
+                    <p className="text-sm font-medium text-[#1A1A1A]">{interest.topic}</p>
                     {interest.description && (
                       <p className="text-xs text-gray-500 truncate max-w-xs">{interest.description}</p>
                     )}
@@ -250,7 +250,7 @@ export default function InterestsPage() {
                   <td>
                     <div className="flex flex-wrap gap-1">
                       {interest.keywords?.slice(0, 3).map((kw) => (
-                        <span key={kw} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                        <span key={kw} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg">
                           {kw}
                         </span>
                       ))}
@@ -259,7 +259,7 @@ export default function InterestsPage() {
                   <td>
                     <div className="flex flex-wrap gap-1">
                       {interest.categories?.slice(0, 2).map((cat) => (
-                        <span key={cat} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                        <span key={cat} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg">
                           {cat}
                         </span>
                       ))}
@@ -275,14 +275,14 @@ export default function InterestsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleEdit(interest)}
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                         title="Edit"
                       >
                         <Edit2 className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                       <button
                         onClick={() => handleDelete(interest.id)}
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-gray-400" />

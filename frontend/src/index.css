@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -10,11 +10,26 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 600ms ease-out;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #F9FAFB;
-  color: #111827;
+  background-color: #FFFFFF;
+  color: #1A1A1A;
 }
 
 /* Scrollbar */
@@ -38,8 +53,8 @@ body {
 
 /* Base styles */
 h1, h2, h3, h4, h5, h6 {
-  color: #111827;
-  font-weight: 600;
+  color: #1A1A1A;
+  font-weight: 500;
 }
 
 /* Table styles */

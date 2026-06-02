@@ -144,16 +144,16 @@ export default function PapersPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Papers</h1>
+          <h1 className="text-xl font-semibold text-[#1A1A1A]">Papers</h1>
           <p className="text-sm text-gray-500">{total} papers</p>
         </div>
         {selected.size > 0 && (
           <button
             onClick={handleBatchDelete}
             disabled={deleting}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all duration-300"
           >
             <Trash2 className="w-3.5 h-3.5" />
             {deleting ? 'Deleting...' : `Delete ${selected.size} selected`}
@@ -162,13 +162,13 @@ export default function PapersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex items-center bg-white border border-gray-200 rounded-md overflow-hidden">
+      <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
           <Link
             to={`/papers?sort_by=${sortBy}&sort_order=${sortOrder}`}
-            className={`px-3 py-1.5 text-xs font-medium ${
+            className={`px-4 py-2 text-xs font-medium transition-all duration-300 ${
               !isRead && !isBookmarked
-                ? 'bg-gray-900 text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -176,9 +176,9 @@ export default function PapersPage() {
           </Link>
           <Link
             to={`/papers?unread=true&sort_by=${sortBy}&sort_order=${sortOrder}`}
-            className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+            className={`px-4 py-2 text-xs font-medium transition-all duration-300 ${
               isRead === false
-                ? 'bg-gray-900 text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -186,9 +186,9 @@ export default function PapersPage() {
           </Link>
           <Link
             to={`/papers?bookmarked=true&sort_by=${sortBy}&sort_order=${sortOrder}`}
-            className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+            className={`px-4 py-2 text-xs font-medium transition-all duration-300 ${
               isBookmarked
-                ? 'bg-gray-900 text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -198,18 +198,18 @@ export default function PapersPage() {
       </div>
 
       {/* Papers Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
         {loading ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-500">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : papers.length === 0 ? (
-          <div className="px-4 py-8 text-center">
+          <div className="px-6 py-8 text-center">
             <p className="text-sm text-gray-500">No papers found</p>
             <p className="text-xs text-gray-400 mt-1">Try fetching some papers first</p>
           </div>
         ) : (
           <table>
             <thead>
-              <tr className="bg-gray-50">
+              <tr>
                 <th className="w-8 px-2">
                   <input
                     type="checkbox"
@@ -223,7 +223,7 @@ export default function PapersPage() {
                 <th className="w-24">
                   <button
                     onClick={() => handleSort('published_date')}
-                    className="inline-flex items-center gap-1 hover:text-gray-900"
+                    className="inline-flex items-center gap-1 hover:text-[#1A1A1A] transition-colors duration-300"
                   >
                     Date
                     {renderSortIcon('published_date')}
@@ -232,7 +232,7 @@ export default function PapersPage() {
                 <th className="w-20">
                   <button
                     onClick={() => handleSort('relevance_score')}
-                    className="inline-flex items-center gap-1 hover:text-gray-900"
+                    className="inline-flex items-center gap-1 hover:text-[#1A1A1A] transition-colors duration-300"
                   >
                     Score
                     {renderSortIcon('relevance_score')}
@@ -255,10 +255,10 @@ export default function PapersPage() {
                   <td>
                     <button
                       onClick={() => handleToggleBookmark(paper)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                     >
                       {paper.is_bookmarked ? (
-                        <BookmarkCheck className="w-3.5 h-3.5 text-gray-900" />
+                        <BookmarkCheck className="w-3.5 h-3.5 text-[#1A1A1A]" />
                       ) : (
                         <Bookmark className="w-3.5 h-3.5 text-gray-300" />
                       )}
@@ -268,8 +268,8 @@ export default function PapersPage() {
                     <Link
                       to={`/papers/${paper.id}`}
                       onClick={() => handleMarkRead(paper)}
-                      className={`hover:text-gray-900 ${
-                        paper.is_read ? 'text-gray-600' : 'text-gray-900 font-medium'
+                      className={`hover:text-[#1A1A1A] transition-colors duration-300 ${
+                        paper.is_read ? 'text-gray-600' : 'text-[#1A1A1A] font-medium'
                       }`}
                     >
                       <span className="text-sm">{paper.title}</span>
@@ -303,7 +303,7 @@ export default function PapersPage() {
                           href={paper.pdf_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                           title="View PDF"
                         >
                           <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
@@ -311,7 +311,7 @@ export default function PapersPage() {
                       )}
                       <button
                         onClick={() => handleDelete(paper)}
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-gray-400" />
@@ -327,7 +327,7 @@ export default function PapersPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-6">
           <p className="text-xs text-gray-500">
             Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
           </p>
@@ -339,11 +339,11 @@ export default function PapersPage() {
                 setSearchParams(newParams)
               }}
               disabled={page <= 1}
-              className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-2 text-xs text-gray-600">
+            <span className="px-3 text-xs text-gray-600">
               {page} / {totalPages}
             </span>
             <button
@@ -353,7 +353,7 @@ export default function PapersPage() {
                 setSearchParams(newParams)
               }}
               disabled={page >= totalPages}
-              className="p-1.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

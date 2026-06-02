@@ -45,9 +45,9 @@ export default function HomePage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-[#1A1A1A]">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {stats?.last_fetch
               ? `Last fetch: ${format(new Date(stats.last_fetch), 'MMM d, HH:mm')}`
@@ -56,7 +56,7 @@ export default function HomePage() {
         </div>
         <button
           onClick={() => setShowFetchModal(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A1A1A] text-white text-sm font-medium rounded-lg hover:bg-[#3B82F6] transition-all duration-300"
         >
           <Search className="w-3.5 h-3.5" />
           Fetch Papers
@@ -64,42 +64,42 @@ export default function HomePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <Link to="/papers" className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300">
-          <p className="text-2xl font-semibold text-gray-900">{stats?.total_papers || 0}</p>
+      <div className="grid grid-cols-4 gap-6 mb-8">
+        <Link to="/papers" className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
+          <p className="text-2xl font-semibold text-[#1A1A1A]">{stats?.total_papers || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Total Papers</p>
         </Link>
-        <Link to="/papers?unread=true" className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300">
-          <p className="text-2xl font-semibold text-gray-900">{stats?.unread_papers || 0}</p>
+        <Link to="/papers?unread=true" className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
+          <p className="text-2xl font-semibold text-[#1A1A1A]">{stats?.unread_papers || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Unread</p>
         </Link>
-        <Link to="/recommendations" className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300">
-          <p className="text-2xl font-semibold text-gray-900">{todayRecs.length}</p>
+        <Link to="/recommendations" className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
+          <p className="text-2xl font-semibold text-[#1A1A1A]">{todayRecs.length}</p>
           <p className="text-xs text-gray-500 mt-1">Today's Picks</p>
         </Link>
-        <Link to="/interests" className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300">
-          <p className="text-2xl font-semibold text-gray-900">{stats?.total_interests || 0}</p>
+        <Link to="/interests" className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
+          <p className="text-2xl font-semibold text-[#1A1A1A]">{stats?.total_interests || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Interests</p>
         </Link>
       </div>
 
       {/* Latest Research Report */}
-      <div className="bg-white border border-gray-200 rounded-lg mb-6">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-sm font-medium text-gray-900">Latest Research Report</h2>
+      <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg mb-8">
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="text-sm font-medium text-[#1A1A1A]">Latest Research Report</h2>
           <Link
             to="/reports"
-            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            className="text-xs text-gray-500 hover:text-[#3B82F6] flex items-center gap-1 transition-colors duration-300"
           >
             View all <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         {latestReport ? (
-          <Link to={`/reports/${latestReport.id}`} className="block px-4 py-4 hover:bg-gray-50">
+          <Link to={`/reports/${latestReport.id}`} className="block px-6 py-4 hover:bg-gray-50 transition-colors duration-300">
             <div className="flex items-start gap-3">
               <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{latestReport.title}</p>
+                <p className="text-sm font-medium text-[#1A1A1A]">{latestReport.title}</p>
                 <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                   {latestReport.summary || latestReport.status}
                 </p>
@@ -112,7 +112,7 @@ export default function HomePage() {
             </div>
           </Link>
         ) : (
-          <div className="px-4 py-8 text-center">
+          <div className="px-6 py-8 text-center">
             <p className="text-sm text-gray-500">No reports yet</p>
             <p className="text-xs text-gray-400 mt-1">Fetch papers to generate a research report</p>
           </div>
@@ -120,32 +120,32 @@ export default function HomePage() {
       </div>
 
       {/* Today's Recommendations */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-sm font-medium text-gray-900">Today's Recommendations</h2>
+      <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg">
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="text-sm font-medium text-[#1A1A1A]">Today's Recommendations</h2>
           <Link
             to="/recommendations"
-            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            className="text-xs text-gray-500 hover:text-[#3B82F6] flex items-center gap-1 transition-colors duration-300"
           >
             View all <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
         {todayRecs.length === 0 ? (
-          <div className="px-4 py-8 text-center">
+          <div className="px-6 py-8 text-center">
             <p className="text-sm text-gray-500">No recommendations yet</p>
             <p className="text-xs text-gray-400 mt-1">Fetch papers to get started</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div>
             {todayRecs.slice(0, 8).map((rec) => (
               <Link
                 key={rec.id}
                 to={`/papers/${rec.paper.id}`}
-                className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50"
+                className="flex items-start gap-3 px-6 py-4 hover:bg-gray-50 transition-colors duration-300"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-[#1A1A1A] truncate">
                     {rec.paper.title}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">

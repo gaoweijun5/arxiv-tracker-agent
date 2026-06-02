@@ -41,26 +41,26 @@ export default function RecommendationsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Recommendations</h1>
+          <h1 className="text-xl font-semibold text-[#1A1A1A]">Recommendations</h1>
           <p className="text-sm text-gray-500">Papers matched to your interests</p>
         </div>
       </div>
 
       {/* Recommendations Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
         {loading ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-500">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : recommendations.length === 0 ? (
-          <div className="px-4 py-8 text-center">
+          <div className="px-6 py-8 text-center">
             <p className="text-sm text-gray-500">No recommendations</p>
             <p className="text-xs text-gray-400 mt-1">Configure interests and fetch papers first</p>
           </div>
         ) : (
           <table>
             <thead>
-              <tr className="bg-gray-50">
+              <tr>
                 <th>Paper</th>
                 <th className="w-16">Score</th>
                 <th className="w-48">Reason</th>
@@ -73,7 +73,7 @@ export default function RecommendationsPage() {
                   <td>
                     <Link
                       to={`/papers/${rec.paper.id}`}
-                      className="text-sm font-medium text-gray-900 hover:text-gray-600"
+                      className="text-sm font-medium text-[#1A1A1A] hover:text-[#3B82F6] transition-colors duration-300"
                     >
                       {rec.paper.title}
                     </Link>
@@ -98,7 +98,7 @@ export default function RecommendationsPage() {
                   <td>
                     <button
                       onClick={() => handleDismiss(rec)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300"
                       title="Dismiss"
                     >
                       <X className="w-3.5 h-3.5 text-gray-400" />

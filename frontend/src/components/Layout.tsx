@@ -22,13 +22,13 @@ export default function Layout() {
   const location = useLocation()
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-56 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex flex-col">
         {/* Logo */}
-        <div className="h-14 flex items-center gap-2.5 px-4 border-b border-gray-200">
-          <BookOpen className="w-5 h-5 text-gray-900" />
-          <span className="font-semibold text-gray-900">ArXiv Tracker</span>
+        <div className="h-14 flex items-center gap-2.5 px-4">
+          <BookOpen className="w-5 h-5 text-[#1A1A1A]" />
+          <span className="font-semibold text-[#1A1A1A]">ArXiv Tracker</span>
         </div>
 
         {/* Navigation */}
@@ -41,13 +41,13 @@ export default function Layout() {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm mb-0.5 transition-all duration-300 ${
                   isActive
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-gray-50 text-[#1A1A1A] font-medium'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-[#1A1A1A]'
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${isActive ? 'text-gray-900' : 'text-gray-400'}`} />
+                <item.icon className={`w-4 h-4 ${isActive ? 'text-[#1A1A1A]' : 'text-gray-400'}`} />
                 {item.name}
               </Link>
             )
@@ -55,14 +55,14 @@ export default function Layout() {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-gray-200">
+        <div className="p-3">
           <p className="text-xs text-gray-400">v0.1.0</p>
         </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="max-w-6xl mx-auto px-16 py-12 fade-in">
           <Outlet />
         </div>
       </main>
