@@ -4,7 +4,7 @@
 
 AI-powered arXiv paper tracking and recommendation system with an autonomous LangGraph ReAct agent.
 
-https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
+
 
 English | [中文](README_CN.md)
 
