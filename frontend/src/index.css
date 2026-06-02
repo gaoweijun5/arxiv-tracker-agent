@@ -36,11 +36,12 @@
 
 /* Glass card base */
 .glass-card {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 /* Glass hover effect */
@@ -50,7 +51,7 @@
 
 .glass-hover:hover {
   transform: scale(1.05);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
 }
 
 /* Gradient glow effect */
@@ -66,19 +67,52 @@
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
   pointer-events: none;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #FFFFFF;
+  background: #f0f2f5;
+  color: #1a1a2e;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Scrollbar */
+/* Patchwork color blocks background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background:
+    /* Top left block - soft lavender */
+    linear-gradient(135deg, #e8d5f5 0%, #f5e6ff 100%) 0% 0% / 35% 35% no-repeat,
+    /* Top center block - soft blue */
+    linear-gradient(135deg, #d5e8f5 0%, #e6f0ff 100%) 35% 0% / 30% 25% no-repeat,
+    /* Top right block - soft pink */
+    linear-gradient(135deg, #f5d5e8 0%, #ffe6f0 100%) 65% 0% / 35% 30% no-repeat,
+    /* Middle left block - soft mint */
+    linear-gradient(135deg, #d5f5e8 0%, #e6fff0 100%) 0% 35% / 25% 30% no-repeat,
+    /* Center block - soft peach */
+    linear-gradient(135deg, #f5e8d5 0%, #fff0e6 100%) 30% 30% / 40% 40% no-repeat,
+    /* Middle right block - soft sky */
+    linear-gradient(135deg, #d5e0f5 0%, #e6ecff 100%) 70% 35% / 30% 25% no-repeat,
+    /* Bottom left block - soft coral */
+    linear-gradient(135deg, #f5ddd5 0%, #ffe8e6 100%) 0% 65% / 30% 35% no-repeat,
+    /* Bottom center block - soft sage */
+    linear-gradient(135deg, #dde8d5 0%, #ecf5e6 100%) 35% 70% / 35% 30% no-repeat,
+    /* Bottom right block - soft lilac */
+    linear-gradient(135deg, #e0d5f5 0%, #ece6ff 100%) 65% 65% / 35% 35% no-repeat;
+  opacity: 0.6;
+}
+
+/* Scrollbar - light theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -89,17 +123,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* Base styles */
 h1, h2, h3, h4, h5, h6 {
-  color: #FFFFFF;
+  color: #1a1a2e;
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
 }
@@ -114,39 +148,39 @@ th {
   text-align: left;
   font-weight: 600;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #374151;
 }
 
 tr:hover td {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 /* Code */
 code {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
   font-size: 13px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.06);
   padding: 2px 6px;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #374151;
 }
 
 pre {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
   font-size: 13px;
-  background: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.9);
+  background: #1e1e2e;
+  color: #e0e0e0;
   padding: 16px;
   border-radius: 12px;
   overflow-x: auto;
@@ -154,37 +188,38 @@ pre {
 
 /* Input styles */
 input, select, textarea {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
   border-radius: 12px;
 }
 
 input::placeholder, textarea::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: #9ca3af;
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.15);
+  border-color: #818cf8;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
 }
 
 /* Checkbox styles */
 input[type="checkbox"] {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
 }
 
 /* Link styles */
 a {
-  color: rgba(255, 255, 255, 0.9);
+  color: #4f46e5;
   transition: color 200ms ease;
 }
 
 a:hover {
-  color: #FFFFFF;
+  color: #3730a3;
 }
 
 /* Button base */
@@ -194,6 +229,6 @@ button {
 
 /* Selection */
 ::selection {
-  background: rgba(255, 255, 255, 0.3);
-  color: #FFFFFF;
+  background: rgba(129, 140, 248, 0.3);
+  color: #1a1a2e;
 }

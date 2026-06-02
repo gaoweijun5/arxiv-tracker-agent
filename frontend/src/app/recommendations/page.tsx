@@ -43,21 +43,21 @@ export default function RecommendationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between fade-in stagger-1">
         <div>
-          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Recommendations
           </h1>
-          <p className="text-sm text-white/60 mt-1">Papers matched to your interests</p>
+          <p className="text-sm text-gray-500 mt-1">Papers matched to your interests</p>
         </div>
       </div>
 
       {/* Recommendations Table */}
       <div className="glass-card overflow-hidden fade-in stagger-2">
         {loading ? (
-          <div className="px-6 py-8 text-center text-sm text-white/60">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : recommendations.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-white/60">No recommendations</p>
-            <p className="text-xs text-white/40 mt-1">Configure interests and fetch papers first</p>
+            <p className="text-sm text-gray-500">No recommendations</p>
+            <p className="text-xs text-gray-400 mt-1">Configure interests and fetch papers first</p>
           </div>
         ) : (
           <table>
@@ -79,11 +79,11 @@ export default function RecommendationsPage() {
                   <td>
                     <Link
                       to={`/papers/${rec.paper.id}`}
-                      className="text-sm font-medium text-white hover:text-white/80 transition-colors duration-300"
+                      className="text-sm font-medium text-gray-800 hover:text-indigo-700 transition-colors duration-300"
                     >
                       {rec.paper.title}
                     </Link>
-                    <p className="text-xs text-white/50 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {rec.paper.authors.slice(0, 2).join(', ')}
                       {rec.paper.authors.length > 2 && ' et al.'}
                       {rec.paper.published_date && (
@@ -94,20 +94,20 @@ export default function RecommendationsPage() {
                     </p>
                   </td>
                   <td>
-                    <span className="text-xs font-medium text-white/70">
+                    <span className="text-xs font-medium text-indigo-600">
                       {Math.round(rec.score * 100)}%
                     </span>
                   </td>
                   <td>
-                    <p className="text-xs text-white/60 line-clamp-2">{rec.reason}</p>
+                    <p className="text-xs text-gray-600 line-clamp-2">{rec.reason}</p>
                   </td>
                   <td>
                     <button
                       onClick={() => handleDismiss(rec)}
-                      className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300"
+                      className="p-1 hover:bg-red-50 rounded-lg transition-colors duration-300"
                       title="Dismiss"
                     >
-                      <X className="w-3.5 h-3.5 text-white/50" />
+                      <X className="w-3.5 h-3.5 text-gray-400" />
                     </button>
                   </td>
                 </tr>

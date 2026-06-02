@@ -136,15 +136,15 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="glass-card w-full max-w-md mx-4 fade-in" style={{ background: 'rgba(255, 255, 255, 0.15)' }}>
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="glass-card w-full max-w-md mx-4 fade-in">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4">
-          <h2 className="text-sm font-semibold text-white/90" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h2 className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Fetch Papers
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300" disabled={fetching}>
-            <X className="w-4 h-4 text-white/50" />
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300" disabled={fetching}>
+            <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
@@ -152,17 +152,17 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
         <div className="px-6 pb-6 space-y-4">
           {/* Interests */}
           <div>
-            <label className="block text-xs font-medium text-white/70 mb-2">Topics</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Topics</label>
             {loading ? (
-              <div className="text-sm text-white/50 py-2">Loading...</div>
+              <div className="text-sm text-gray-500 py-2">Loading...</div>
             ) : interests.length === 0 ? (
-              <div className="text-sm text-white/50 py-2">No interests configured</div>
+              <div className="text-sm text-gray-500 py-2">No interests configured</div>
             ) : (
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {interests.map((interest) => (
                   <label
                     key={interest.id}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 cursor-pointer transition-colors duration-300"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-indigo-50 cursor-pointer transition-colors duration-300"
                   >
                     <input
                       type="checkbox"
@@ -170,7 +170,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
                       onChange={() => toggleInterest(interest.id)}
                       className="rounded"
                     />
-                    <span className="text-sm text-white/80">{interest.topic}</span>
+                    <span className="text-sm text-gray-700">{interest.topic}</span>
                   </label>
                 ))}
               </div>
@@ -179,47 +179,47 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
 
           {/* Days Back */}
           <div>
-            <label className="block text-xs font-medium text-white/70 mb-1">Search Period</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Search Period</label>
             <select
               value={daysBack}
               onChange={(e) => setDaysBack(parseInt(e.target.value))}
-              className="w-full px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+              className="w-full px-4 py-2.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
               disabled={fetching}
             >
-              <option value={1} className="bg-gray-800">Last 1 day</option>
-              <option value={3} className="bg-gray-800">Last 3 days</option>
-              <option value={7} className="bg-gray-800">Last 7 days</option>
-              <option value={14} className="bg-gray-800">Last 14 days</option>
-              <option value={30} className="bg-gray-800">Last 30 days</option>
+              <option value={1}>Last 1 day</option>
+              <option value={3}>Last 3 days</option>
+              <option value={7}>Last 7 days</option>
+              <option value={14}>Last 14 days</option>
+              <option value={30}>Last 30 days</option>
             </select>
           </div>
 
           {/* Max Results */}
           <div>
-            <label className="block text-xs font-medium text-white/70 mb-1">Max Results</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Max Results</label>
             <select
               value={maxResults}
               onChange={(e) => setMaxResults(parseInt(e.target.value))}
-              className="w-full px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+              className="w-full px-4 py-2.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
               disabled={fetching}
             >
-              <option value={10} className="bg-gray-800">10 papers</option>
-              <option value={20} className="bg-gray-800">20 papers</option>
-              <option value={30} className="bg-gray-800">30 papers</option>
-              <option value={50} className="bg-gray-800">50 papers</option>
+              <option value={10}>10 papers</option>
+              <option value={20}>20 papers</option>
+              <option value={30}>30 papers</option>
+              <option value={50}>50 papers</option>
             </select>
           </div>
 
           {/* Progress */}
           {fetching && progress && (
-            <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm">
+            <div className="bg-indigo-50 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-white/60">{progress.message}</span>
-                <span className="text-xs font-medium text-white/80">{progress.progress}%</span>
+                <span className="text-xs text-gray-600">{progress.message}</span>
+                <span className="text-xs font-medium text-indigo-700">{progress.progress}%</span>
               </div>
-              <div className="w-full bg-white/10 rounded-full h-1.5">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
-                  className="bg-white/60 h-1.5 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${progress.progress}%` }}
                 />
               </div>
@@ -228,8 +228,8 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
 
           {/* Result */}
           {result && (
-            <div className={`rounded-xl p-4 text-sm backdrop-blur-sm ${
-              result.status === 'success' ? 'bg-green-500/30 text-green-200' : 'bg-red-500/30 text-red-200'
+            <div className={`rounded-xl p-4 text-sm ${
+              result.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}>
               <div>
                 {result.status === 'success'
@@ -240,7 +240,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
                 <Link
                   to={`/reports/${result.report_id}`}
                   onClick={onClose}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-green-200 hover:text-green-100 transition-colors duration-300"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-green-700 hover:text-green-800 transition-colors duration-300"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   View research report
@@ -254,7 +254,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
         <div className="flex justify-end gap-2 px-6 py-4">
           <button
             onClick={result ? onClose : handleCancel}
-            className="px-4 py-2.5 text-sm text-white/70 hover:bg-white/10 rounded-xl transition-all duration-300"
+            className="px-4 py-2.5 text-sm bg-white/80 text-gray-700 hover:bg-gray-100 rounded-xl border border-gray-200 transition-all duration-300"
           >
             {result ? 'Close' : 'Cancel'}
           </button>
@@ -262,7 +262,7 @@ export default function FetchModal({ isOpen, onClose, onComplete }: FetchModalPr
             <button
               onClick={handleFetch}
               disabled={fetching || selectedInterests.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/20 text-white text-sm font-medium rounded-xl hover:bg-white/30 disabled:opacity-40 backdrop-blur-sm border border-white/20 transition-all duration-300"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-xl hover:from-indigo-600 hover:to-purple-600 disabled:opacity-40 transition-all duration-300"
             >
               {fetching ? (
                 <>

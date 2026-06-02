@@ -90,23 +90,23 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="fade-in stagger-1">
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Settings
         </h1>
-        <p className="text-sm text-white/60 mt-1">System configuration and fetch history</p>
+        <p className="text-sm text-gray-500 mt-1">System configuration and fetch history</p>
       </div>
 
       {/* Manual Fetch */}
       <div className="glass-card p-6 fade-in stagger-2">
-        <h2 className="text-sm font-semibold text-white/90 mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <h2 className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Manual Fetch
         </h2>
-        <p className="text-xs text-white/50 mb-4">
+        <p className="text-xs text-gray-500 mb-4">
           Fetch latest papers from arXiv. You can select specific topics and date range.
         </p>
         <button
           onClick={() => setShowFetchModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 text-white text-sm font-medium rounded-2xl hover:bg-white/30 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:scale-105"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-2xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 hover:scale-105"
         >
           <Search className="w-4 h-4" />
           Fetch Papers
@@ -116,41 +116,41 @@ export default function SettingsPage() {
       {/* Auto Fetch Schedule */}
       <div className="glass-card p-6 fade-in stagger-3">
         <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4 text-white/60" />
-          <h2 className="text-sm font-semibold text-white/90" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <Clock className="w-4 h-4 text-gray-500" />
+          <h2 className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Auto Fetch Schedule
           </h2>
         </div>
-        <p className="text-xs text-white/50 mb-4">
+        <p className="text-xs text-gray-500 mb-4">
           Configure when to automatically fetch new papers every day.
         </p>
 
         <div className="flex items-end gap-4">
           <div className="flex items-center gap-2">
             <div>
-              <label className="block text-xs text-white/50 mb-1">Hour</label>
+              <label className="block text-xs text-gray-500 mb-1">Hour</label>
               <select
                 value={schedulerHour}
                 onChange={(e) => setSchedulerHour(parseInt(e.target.value))}
-                className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+                className="px-3 py-2 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
               >
                 {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i} className="bg-gray-800">
+                  <option key={i} value={i}>
                     {i.toString().padStart(2, '0')}
                   </option>
                 ))}
               </select>
             </div>
-            <span className="text-sm text-white/50 pb-1">:</span>
+            <span className="text-sm text-gray-400 pb-1">:</span>
             <div>
-              <label className="block text-xs text-white/50 mb-1">Minute</label>
+              <label className="block text-xs text-gray-500 mb-1">Minute</label>
               <select
                 value={schedulerMinute}
                 onChange={(e) => setSchedulerMinute(parseInt(e.target.value))}
-                className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+                className="px-3 py-2 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
               >
                 {Array.from({ length: 60 }, (_, i) => (
-                  <option key={i} value={i} className="bg-gray-800">
+                  <option key={i} value={i}>
                     {i.toString().padStart(2, '0')}
                   </option>
                 ))}
@@ -165,13 +165,13 @@ export default function SettingsPage() {
               onChange={(e) => setSchedulerEnabled(e.target.checked)}
               className="rounded"
             />
-            <span className="text-sm text-white/70">Enabled</span>
+            <span className="text-sm text-gray-600">Enabled</span>
           </label>
 
           <button
             onClick={handleSaveScheduler}
             disabled={savingScheduler}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/20 text-white text-sm font-medium rounded-2xl hover:bg-white/30 disabled:opacity-50 backdrop-blur-sm border border-white/20 transition-all duration-300"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-2xl hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50 transition-all duration-300"
           >
             <Save className="w-4 h-4" />
             {savingScheduler ? 'Saving...' : 'Save'}
@@ -180,35 +180,35 @@ export default function SettingsPage() {
 
         <div className="flex items-end gap-4 mt-4">
           <div>
-            <label className="block text-xs text-white/50 mb-1">Search Period (days)</label>
+            <label className="block text-xs text-gray-500 mb-1">Search Period (days)</label>
             <select
               value={schedulerDaysBack}
               onChange={(e) => setSchedulerDaysBack(parseInt(e.target.value))}
-              className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+              className="px-3 py-2 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
             >
-              <option value={1} className="bg-gray-800">1 day</option>
-              <option value={3} className="bg-gray-800">3 days</option>
-              <option value={7} className="bg-gray-800">7 days</option>
-              <option value={14} className="bg-gray-800">14 days</option>
-              <option value={30} className="bg-gray-800">30 days</option>
+              <option value={1}>1 day</option>
+              <option value={3}>3 days</option>
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs text-white/50 mb-1">Max Results per Topic</label>
+            <label className="block text-xs text-gray-500 mb-1">Max Results per Topic</label>
             <select
               value={schedulerMaxResults}
               onChange={(e) => setSchedulerMaxResults(parseInt(e.target.value))}
-              className="px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 text-white transition-all duration-300"
+              className="px-3 py-2 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 text-gray-800 transition-all duration-300"
             >
-              <option value={10} className="bg-gray-800">10 papers</option>
-              <option value={20} className="bg-gray-800">20 papers</option>
-              <option value={30} className="bg-gray-800">30 papers</option>
-              <option value={50} className="bg-gray-800">50 papers</option>
+              <option value={10}>10 papers</option>
+              <option value={20}>20 papers</option>
+              <option value={30}>30 papers</option>
+              <option value={50}>50 papers</option>
             </select>
           </div>
         </div>
 
-        <p className="text-xs text-white/40 mt-4">
+        <p className="text-xs text-gray-400 mt-4">
           {schedulerEnabled
             ? `Papers will be fetched daily at ${formatTime(schedulerHour, schedulerMinute)}`
             : 'Auto fetch is disabled'}
@@ -218,17 +218,17 @@ export default function SettingsPage() {
       {/* Fetch History */}
       <div className="glass-card overflow-hidden fade-in stagger-4">
         <div className="px-6 py-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white/90" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h2 className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Fetch History
           </h2>
-          <span className="text-xs text-white/40">{logTotal} total</span>
+          <span className="text-xs text-gray-400">{logTotal} total</span>
         </div>
 
         {loading ? (
-          <div className="px-6 py-8 text-center text-sm text-white/60">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : fetchLogs.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-white/60">No fetch history</p>
+            <p className="text-sm text-gray-500">No fetch history</p>
           </div>
         ) : (
           <>
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                     className="fade-in"
                     style={{ animationDelay: `${(index + 4) * 50}ms` }}
                   >
-                    <td className="text-xs text-white/60">
+                    <td className="text-xs text-gray-600">
                       {log.fetch_date
                         ? format(new Date(log.fetch_date), 'MMM d, HH:mm')
                         : '-'}
@@ -259,37 +259,37 @@ export default function SettingsPage() {
                     <td>
                       <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg ${
                         log.source === 'auto'
-                          ? 'bg-blue-500/30 text-blue-200'
-                          : 'bg-white/10 text-white/60'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
                       }`}>
                         {log.source === 'auto' ? 'Auto' : 'Manual'}
                       </span>
                     </td>
                     <td>
                       {log.status === 'success' ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-300">
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
                           <CheckCircle className="w-3 h-3" />
                           Success
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-300">
+                        <span className="inline-flex items-center gap-1 text-xs text-red-600">
                           <XCircle className="w-3 h-3" />
                           Failed
                         </span>
                       )}
                     </td>
-                    <td className="text-xs text-white/60">{log.papers_found}</td>
-                    <td className="text-xs text-white/60">{log.papers_relevant}</td>
-                    <td className="text-xs text-white/50 max-w-xs truncate">
+                    <td className="text-xs text-gray-600">{log.papers_found}</td>
+                    <td className="text-xs text-gray-600">{log.papers_relevant}</td>
+                    <td className="text-xs text-gray-500 max-w-xs truncate">
                       {log.categories_fetched?.join(', ') || '-'}
                     </td>
                     <td>
                       <button
                         onClick={() => handleDeleteLog(log.id)}
-                        className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300"
+                        className="p-1 hover:bg-red-50 rounded-lg transition-colors duration-300"
                         title="Delete"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-white/50" />
+                        <Trash2 className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                     </td>
                   </tr>
@@ -300,23 +300,23 @@ export default function SettingsPage() {
             {/* Pagination */}
             {totalLogPages > 1 && (
               <div className="px-6 py-4 flex items-center justify-between">
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-gray-500">
                   Page {logPage} of {totalLogPages}
                 </p>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setLogPage((p) => Math.max(1, p - 1))}
                     disabled={logPage <= 1}
-                    className="p-2 glass-card hover:bg-white/20 disabled:opacity-40 transition-all duration-300"
+                    className="p-2 glass-card hover:bg-indigo-50 disabled:opacity-40 transition-all duration-300"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5 text-white" />
+                    <ChevronLeft className="w-3.5 h-3.5 text-gray-600" />
                   </button>
                   <button
                     onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))}
                     disabled={logPage >= totalLogPages}
-                    className="p-2 glass-card hover:bg-white/20 disabled:opacity-40 transition-all duration-300"
+                    className="p-2 glass-card hover:bg-indigo-50 disabled:opacity-40 transition-all duration-300"
                   >
-                    <ChevronRight className="w-3.5 h-3.5 text-white" />
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
                   </button>
                 </div>
               </div>
@@ -327,25 +327,25 @@ export default function SettingsPage() {
 
       {/* System Info */}
       <div className="glass-card p-6 fade-in stagger-5">
-        <h2 className="text-sm font-semibold text-white/90 mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <h2 className="text-sm font-semibold text-gray-800 mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
           System
         </h2>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <span className="text-white/50">Version</span>
-            <span className="ml-2 text-white">0.1.0</span>
+            <span className="text-gray-500">Version</span>
+            <span className="ml-2 text-gray-800">0.1.0</span>
           </div>
           <div>
-            <span className="text-white/50">Backend</span>
-            <span className="ml-2 text-white">FastAPI + LangGraph</span>
+            <span className="text-gray-500">Backend</span>
+            <span className="ml-2 text-gray-800">FastAPI + LangGraph</span>
           </div>
           <div>
-            <span className="text-white/50">LLM</span>
-            <span className="ml-2 text-white">DeepSeek v4 Flash</span>
+            <span className="text-gray-500">LLM</span>
+            <span className="ml-2 text-gray-800">DeepSeek v4 Flash</span>
           </div>
           <div>
-            <span className="text-white/50">Embedding</span>
-            <span className="ml-2 text-white">DashScope v4</span>
+            <span className="text-gray-500">Embedding</span>
+            <span className="ml-2 text-gray-800">DashScope v4</span>
           </div>
         </div>
       </div>

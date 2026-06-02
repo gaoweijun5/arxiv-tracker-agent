@@ -97,7 +97,7 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sm text-white/60">Loading...</div>
+        <div className="text-sm text-gray-500">Loading...</div>
       </div>
     )
   }
@@ -106,16 +106,16 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between fade-in stagger-1">
         <div>
-          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Research Reports
           </h1>
-          <p className="text-sm text-white/60 mt-1">A report is generated after every manual or scheduled fetch.</p>
+          <p className="text-sm text-gray-500 mt-1">A report is generated after every manual or scheduled fetch.</p>
         </div>
         {selected.size > 0 && (
           <button
             onClick={handleBatchDelete}
             disabled={deleting}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-500/80 text-white text-sm font-medium rounded-2xl hover:bg-red-500 disabled:opacity-50 transition-all duration-300 backdrop-blur-sm border border-red-400/30"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-500 text-white text-sm font-medium rounded-2xl hover:bg-red-600 disabled:opacity-50 transition-all duration-300"
           >
             <Trash2 className="w-4 h-4" />
             {deleting ? 'Deleting...' : `Delete ${selected.size} selected`}
@@ -125,15 +125,15 @@ export default function ReportsPage() {
 
       {reports.length === 0 ? (
         <div className="glass-card px-6 py-10 text-center fade-in stagger-2">
-          <FileText className="w-8 h-8 mx-auto text-white/30" />
-          <p className="text-sm text-white/60 mt-3">No reports yet</p>
-          <p className="text-xs text-white/40 mt-1">Run a fetch to generate the first research report</p>
+          <FileText className="w-8 h-8 mx-auto text-gray-300" />
+          <p className="text-sm text-gray-500 mt-3">No reports yet</p>
+          <p className="text-xs text-gray-400 mt-1">Run a fetch to generate the first research report</p>
         </div>
       ) : (
         <div className="grid grid-cols-[280px_1fr] gap-6">
           <div className="glass-card overflow-hidden fade-in stagger-2">
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-medium text-white/60 uppercase">History</span>
+              <span className="text-xs font-medium text-gray-500 uppercase">History</span>
               <input
                 type="checkbox"
                 checked={reports.length > 0 && selected.size === reports.length}
@@ -146,7 +146,7 @@ export default function ReportsPage() {
                 <div
                   key={report.id}
                   className={`px-4 py-3 transition-colors duration-300 fade-in ${
-                    selectedReport?.id === report.id ? 'bg-white/10' : 'hover:bg-white/5'
+                    selectedReport?.id === report.id ? 'bg-indigo-50/50' : 'hover:bg-gray-50'
                   }`}
                   style={{ animationDelay: `${(index + 2) * 50}ms` }}
                 >
@@ -164,21 +164,21 @@ export default function ReportsPage() {
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] px-2 py-0.5 rounded-lg ${
                           report.source === 'auto'
-                            ? 'bg-blue-500/30 text-blue-200'
-                            : 'bg-white/10 text-white/60'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
                         }`}>
                           {report.source === 'auto' ? 'Auto' : 'Manual'}
                         </span>
-                        <span className="text-xs text-white/40">{formatDate(report.created_at)}</span>
+                        <span className="text-xs text-gray-400">{formatDate(report.created_at)}</span>
                       </div>
-                      <p className="text-sm font-medium text-white mt-1 line-clamp-2">{report.title}</p>
-                      <p className="text-xs text-white/50 mt-1 line-clamp-2">
+                      <p className="text-sm font-medium text-gray-800 mt-1 line-clamp-2">{report.title}</p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                         {report.summary || report.status}
                       </p>
                     </Link>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(report) }}
-                      className="p-1 hover:bg-white/10 rounded-lg text-white/40 hover:text-white/70 shrink-0 transition-colors duration-300"
+                      className="p-1 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 shrink-0 transition-colors duration-300"
                       title="Delete"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -196,19 +196,19 @@ export default function ReportsPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`text-[10px] px-2 py-0.5 rounded-lg ${
                       selectedReport.status === 'generated'
-                        ? 'bg-green-500/30 text-green-200'
+                        ? 'bg-green-100 text-green-700'
                         : selectedReport.status === 'empty'
-                          ? 'bg-white/10 text-white/60'
-                          : 'bg-red-500/30 text-red-200'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-red-100 text-red-700'
                     }`}>
                       {selectedReport.status}
                     </span>
-                    <span className="text-xs text-white/40">{formatDate(selectedReport.created_at)}</span>
+                    <span className="text-xs text-gray-400">{formatDate(selectedReport.created_at)}</span>
                   </div>
-                  <h2 className="text-lg font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
                     {selectedReport.title}
                   </h2>
-                  <div className="flex gap-4 mt-3 text-xs text-white/50">
+                  <div className="flex gap-4 mt-3 text-xs text-gray-500">
                     <span>Found {selectedReport.stats.papers_found || 0}</span>
                     <span>Relevant {selectedReport.stats.papers_relevant || 0}</span>
                     <span>Saved {selectedReport.stats.papers_saved || 0}</span>
@@ -216,19 +216,19 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="px-6 pb-6">
-                  <ReactMarkdown className="prose prose-sm max-w-none prose-invert">
+                  <ReactMarkdown className="prose prose-sm max-w-none">
                     {selectedReport.content_md}
                   </ReactMarkdown>
 
                   {selectedReport.papers.length > 0 && (
                     <div className="mt-6 pt-4">
-                      <h3 className="text-xs font-medium text-white/60 uppercase mb-2">Papers in this report</h3>
+                      <h3 className="text-xs font-medium text-gray-500 uppercase mb-2">Papers in this report</h3>
                       <div className="space-y-2">
                         {selectedReport.papers.map((paper) => (
                           <Link
                             key={paper.id}
                             to={`/papers/${paper.id}`}
-                            className="block text-sm text-white/80 hover:text-white transition-colors duration-300"
+                            className="block text-sm text-gray-700 hover:text-indigo-700 transition-colors duration-300"
                           >
                             {paper.title}
                           </Link>
@@ -239,7 +239,7 @@ export default function ReportsPage() {
                 </div>
               </>
             ) : (
-              <div className="px-6 py-10 text-center text-sm text-white/60">
+              <div className="px-6 py-10 text-center text-sm text-gray-500">
                 Select a report
               </div>
             )}

@@ -104,14 +104,14 @@ export default function InterestsPage() {
       {/* Header */}
       <div className="flex items-center justify-between fade-in stagger-1">
         <div>
-          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Interests
           </h1>
-          <p className="text-sm text-white/60 mt-1">Configure research topics for paper matching</p>
+          <p className="text-sm text-gray-500 mt-1">Configure research topics for paper matching</p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 text-white text-sm font-medium rounded-2xl hover:bg-white/30 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:scale-105"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-2xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 hover:scale-105"
         >
           <Plus className="w-4 h-4" />
           Add
@@ -122,51 +122,51 @@ export default function InterestsPage() {
       {showForm && (
         <div className="glass-card fade-in stagger-2">
           <div className="flex items-center justify-between px-6 py-4">
-            <h2 className="text-sm font-semibold text-white/90" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h2 className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Outfit, sans-serif' }}>
               {editingId ? 'Edit Interest' : 'New Interest'}
             </h2>
-            <button onClick={resetForm} className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300">
-              <X className="w-4 h-4 text-white/50" />
+            <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-300">
+              <X className="w-4 h-4 text-gray-400" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">Topic *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Topic *</label>
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 required
                 placeholder="e.g., Large Language Models"
-                className="w-full px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 focus:bg-white/15 text-white placeholder-white/50 transition-all duration-300"
+                className="w-full px-4 py-2.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white text-gray-800 placeholder-gray-400 transition-all duration-300"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">Description</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
                 rows={2}
-                className="w-full px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 focus:bg-white/15 text-white placeholder-white/50 resize-none transition-all duration-300"
+                className="w-full px-4 py-2.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white text-gray-800 placeholder-gray-400 resize-none transition-all duration-300"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">Keywords (comma-separated)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Keywords (comma-separated)</label>
               <input
                 type="text"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 placeholder="e.g., transformer, attention, fine-tuning"
-                className="w-full px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 focus:bg-white/15 text-white placeholder-white/50 transition-all duration-300"
+                className="w-full px-4 py-2.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white text-gray-800 placeholder-gray-400 transition-all duration-300"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">Categories</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Categories</label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
                   <button
@@ -175,8 +175,8 @@ export default function InterestsPage() {
                     onClick={() => toggleCategory(cat)}
                     className={`px-3 py-1.5 text-xs rounded-xl transition-all duration-300 ${
                       categories.includes(cat)
-                        ? 'bg-white/30 text-white border border-white/40'
-                        : 'bg-white/10 text-white/60 border border-white/10 hover:bg-white/20 hover:text-white'
+                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                        : 'bg-white/80 text-gray-600 border border-gray-200 hover:bg-indigo-50 hover:text-indigo-700'
                     }`}
                   >
                     {cat}
@@ -186,7 +186,7 @@ export default function InterestsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
                 Weight: {weight.toFixed(1)}
               </label>
               <input
@@ -196,7 +196,7 @@ export default function InterestsPage() {
                 step="0.1"
                 value={weight}
                 onChange={(e) => setWeight(parseFloat(e.target.value))}
-                className="w-full accent-white/50"
+                className="w-full accent-indigo-500"
               />
             </div>
 
@@ -204,13 +204,13 @@ export default function InterestsPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-4 py-2.5 text-sm text-white/70 hover:bg-white/10 rounded-xl transition-all duration-300"
+                className="px-4 py-2.5 text-sm bg-white/80 text-gray-700 hover:bg-gray-100 rounded-xl border border-gray-200 transition-all duration-300"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2.5 bg-white/20 text-white text-sm rounded-xl hover:bg-white/30 backdrop-blur-sm border border-white/20 transition-all duration-300"
+                className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300"
               >
                 {editingId ? 'Update' : 'Create'}
               </button>
@@ -222,11 +222,11 @@ export default function InterestsPage() {
       {/* Interests Table */}
       <div className="glass-card overflow-hidden fade-in stagger-3">
         {loading ? (
-          <div className="px-6 py-8 text-center text-sm text-white/60">Loading...</div>
+          <div className="px-6 py-8 text-center text-sm text-gray-500">Loading...</div>
         ) : interests.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-white/60">No interests configured</p>
-            <p className="text-xs text-white/40 mt-1">Add interests to get personalized recommendations</p>
+            <p className="text-sm text-gray-500">No interests configured</p>
+            <p className="text-xs text-gray-400 mt-1">Add interests to get personalized recommendations</p>
           </div>
         ) : (
           <table>
@@ -248,15 +248,15 @@ export default function InterestsPage() {
                   style={{ animationDelay: `${(index + 3) * 50}ms` }}
                 >
                   <td>
-                    <p className="text-sm font-medium text-white">{interest.topic}</p>
+                    <p className="text-sm font-medium text-gray-800">{interest.topic}</p>
                     {interest.description && (
-                      <p className="text-xs text-white/50 truncate max-w-xs">{interest.description}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-xs">{interest.description}</p>
                     )}
                   </td>
                   <td>
                     <div className="flex flex-wrap gap-1">
                       {interest.keywords?.slice(0, 3).map((kw) => (
-                        <span key={kw} className="text-[10px] px-2 py-0.5 bg-white/10 text-white/70 rounded-lg">
+                        <span key={kw} className="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg">
                           {kw}
                         </span>
                       ))}
@@ -265,15 +265,15 @@ export default function InterestsPage() {
                   <td>
                     <div className="flex flex-wrap gap-1">
                       {interest.categories?.slice(0, 2).map((cat) => (
-                        <span key={cat} className="text-[10px] px-2 py-0.5 bg-white/10 text-white/70 rounded-lg">
+                        <span key={cat} className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-lg">
                           {cat}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="text-xs text-white/60">{interest.weight.toFixed(1)}</td>
+                  <td className="text-xs text-gray-600">{interest.weight.toFixed(1)}</td>
                   <td>
-                    <span className={`text-xs ${interest.is_active ? 'text-green-300' : 'text-white/40'}`}>
+                    <span className={`text-xs ${interest.is_active ? 'text-green-600' : 'text-gray-400'}`}>
                       {interest.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -281,17 +281,17 @@ export default function InterestsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleEdit(interest)}
-                        className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300"
+                        className="p-1 hover:bg-indigo-50 rounded-lg transition-colors duration-300"
                         title="Edit"
                       >
-                        <Edit2 className="w-3.5 h-3.5 text-white/50" />
+                        <Edit2 className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                       <button
                         onClick={() => handleDelete(interest.id)}
-                        className="p-1 hover:bg-white/10 rounded-lg transition-colors duration-300"
+                        className="p-1 hover:bg-red-50 rounded-lg transition-colors duration-300"
                         title="Delete"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-white/50" />
+                        <Trash2 className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                     </div>
                   </td>
