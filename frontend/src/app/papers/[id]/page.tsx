@@ -144,7 +144,7 @@ export default function PaperDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sm text-gray-500">Loading...</div>
+        <div className="text-sm text-white/60">Loading...</div>
       </div>
     )
   }
@@ -152,8 +152,8 @@ export default function PaperDetailPage() {
   if (!paper) {
     return (
       <div className="text-center py-12">
-        <p className="text-sm text-gray-500">Paper not found</p>
-        <Link to="/papers" className="text-sm text-gray-600 hover:text-gray-900 mt-2 inline-block">
+        <p className="text-sm text-white/60">Paper not found</p>
+        <Link to="/papers" className="text-sm text-white/80 hover:text-white mt-2 inline-block transition-colors duration-300">
           Back to papers
         </Link>
       </div>
@@ -168,26 +168,28 @@ export default function PaperDetailPage() {
           {/* Back button */}
           <Link
             to="/papers"
-            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[#1A1A1A] transition-colors duration-300"
+            className="inline-flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors duration-300 fade-in stagger-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back
           </Link>
 
           {/* Paper header */}
-          <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6">
+          <div className="glass-card p-6 fade-in stagger-2">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <h1 className="text-lg font-semibold text-[#1A1A1A]">{paper.title}</h1>
-                <p className="text-sm text-gray-600 mt-1">{paper.authors.join(', ')}</p>
+                <h1 className="text-lg font-bold text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  {paper.title}
+                </h1>
+                <p className="text-sm text-white/70 mt-1">{paper.authors.join(', ')}</p>
                 <div className="flex items-center gap-2 mt-2">
                   {paper.categories?.map((cat) => (
-                    <span key={cat} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg">
+                    <span key={cat} className="text-[10px] px-2 py-0.5 bg-white/10 text-white/70 rounded-lg">
                       {cat}
                     </span>
                   ))}
                   {paper.published_date && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-white/40">
                       {format(new Date(paper.published_date), 'MMM d, yyyy')}
                     </span>
                   )}
@@ -196,12 +198,12 @@ export default function PaperDetailPage() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleToggleBookmark}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-300"
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-300"
                 >
                   {paper.is_bookmarked ? (
-                    <BookmarkCheck className="w-4 h-4 text-[#1A1A1A]" />
+                    <BookmarkCheck className="w-4 h-4 text-white" />
                   ) : (
-                    <Bookmark className="w-4 h-4 text-gray-400" />
+                    <Bookmark className="w-4 h-4 text-white/50" />
                   )}
                 </button>
                 {paper.pdf_url && (
@@ -209,37 +211,37 @@ export default function PaperDetailPage() {
                     href={paper.pdf_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-300"
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-300"
                     title="View PDF"
                   >
-                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                    <ExternalLink className="w-4 h-4 text-white/50" />
                   </a>
                 )}
                 {!paper.is_downloaded && paper.pdf_url && (
                   <button
                     onClick={handleDownloadPdf}
                     disabled={downloading}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors duration-300"
+                    className="p-1.5 hover:bg-white/10 rounded-lg disabled:opacity-50 transition-colors duration-300"
                     title="Download PDF for AI Q&A"
                   >
                     {downloading ? (
-                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                      <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
                     ) : (
-                      <Download className="w-4 h-4 text-gray-400" />
+                      <Download className="w-4 h-4 text-white/50" />
                     )}
                   </button>
                 )}
                 {paper.is_downloaded && (
-                  <span className="text-[10px] text-green-600 px-2 py-0.5 bg-green-50 rounded-lg">
+                  <span className="text-[10px] text-green-300 px-2 py-0.5 bg-green-500/30 rounded-lg">
                     PDF Ready
                   </span>
                 )}
                 <button
                   onClick={() => setShowChat(!showChat)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all duration-300 ${
+                  className={`px-3 py-1 text-xs font-medium rounded-xl transition-all duration-300 ${
                     showChat
-                      ? 'bg-[#1A1A1A] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-white/30 text-white border border-white/40'
+                      : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5 inline mr-1" />
@@ -251,23 +253,27 @@ export default function PaperDetailPage() {
 
           {/* AI Summary */}
           {paper.ai_summary && (
-            <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6">
-              <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Summary</h2>
-              <p className="text-sm text-gray-700 leading-relaxed">{paper.ai_summary}</p>
+            <div className="glass-card p-6 fade-in stagger-3">
+              <h2 className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Summary
+              </h2>
+              <p className="text-sm text-white/80 leading-relaxed">{paper.ai_summary}</p>
               {paper.ai_summary_zh && (
-                <p className="text-sm text-gray-500 mt-2">{paper.ai_summary_zh}</p>
+                <p className="text-sm text-white/60 mt-2">{paper.ai_summary_zh}</p>
               )}
             </div>
           )}
 
           {/* Key Findings */}
           {paper.key_findings && paper.key_findings.length > 0 && (
-            <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6">
-              <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Key Findings</h2>
+            <div className="glass-card p-6 fade-in stagger-4">
+              <h2 className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Key Findings
+              </h2>
               <ul className="space-y-1.5">
                 {paper.key_findings.map((finding, index) => (
-                  <li key={index} className="text-sm text-gray-700 flex gap-2">
-                    <span className="text-gray-400">{index + 1}.</span>
+                  <li key={index} className="text-sm text-white/80 flex gap-2">
+                    <span className="text-white/40">{index + 1}.</span>
                     {finding}
                   </li>
                 ))}
@@ -276,44 +282,48 @@ export default function PaperDetailPage() {
           )}
 
           {/* Abstract */}
-          <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6">
-            <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Abstract</h2>
-            <p className="text-sm text-gray-700 leading-relaxed">{paper.abstract}</p>
+          <div className="glass-card p-6 fade-in stagger-4">
+            <h2 className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Abstract
+            </h2>
+            <p className="text-sm text-white/80 leading-relaxed">{paper.abstract}</p>
           </div>
 
           {/* Similar Papers */}
-          <div className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg p-6">
+          <div className="glass-card p-6 fade-in stagger-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Similar Papers</h2>
+              <h2 className="text-xs font-semibold text-white/60 uppercase tracking-wide" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Similar Papers
+              </h2>
               {similarPapers.length > 0 && (
-                <span className="text-xs text-gray-400">{similarPapers.length} found</span>
+                <span className="text-xs text-white/40">{similarPapers.length} found</span>
               )}
             </div>
 
             {loadingSimilar ? (
               <div className="flex items-center gap-2 py-4">
-                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                <span className="text-sm text-gray-400">Finding similar papers...</span>
+                <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
+                <span className="text-sm text-white/50">Finding similar papers...</span>
               </div>
             ) : similarPapers.length === 0 ? (
-              <p className="text-sm text-gray-400 py-2">No similar papers found in database</p>
+              <p className="text-sm text-white/50 py-2">No similar papers found in database</p>
             ) : (
               <div className="space-y-3">
                 {similarPapers.map((sp) => (
                   <Link
                     key={sp.id}
                     to={`/papers/${sp.id}`}
-                    className="block p-4 rounded-lg hover:bg-gray-50 transition-colors duration-300"
+                    className="block p-4 rounded-xl hover:bg-white/10 transition-colors duration-300"
                   >
                     <div className="flex items-start gap-3">
                       {sp.similarity_score != null && (
-                        <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg mt-0.5">
+                        <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 bg-blue-500/30 text-blue-200 rounded-lg mt-0.5">
                           {Math.round(sp.similarity_score * 100)}%
                         </span>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#1A1A1A] line-clamp-1">{sp.title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm font-medium text-white line-clamp-1">{sp.title}</p>
+                        <p className="text-xs text-white/50 mt-0.5">
                           {sp.authors.slice(0, 3).join(', ')}
                           {sp.authors.length > 3 && ' et al.'}
                           {sp.published_date && (
@@ -322,10 +332,10 @@ export default function PaperDetailPage() {
                             </span>
                           )}
                           {sp.is_bookmarked && (
-                            <BookmarkCheck className="w-3 h-3 inline ml-1 text-[#1A1A1A]" />
+                            <BookmarkCheck className="w-3 h-3 inline ml-1 text-white" />
                           )}
                         </p>
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">{sp.abstract}</p>
+                        <p className="text-xs text-white/40 mt-1 line-clamp-2">{sp.abstract}</p>
                       </div>
                     </div>
                   </Link>
@@ -338,13 +348,15 @@ export default function PaperDetailPage() {
 
       {/* Chat sidebar */}
       {showChat && (
-        <div className="w-1/2 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-lg flex flex-col">
+        <div className="w-1/2 glass-card flex flex-col fade-in">
           <div className="px-6 py-4 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-[#1A1A1A]">Ask about this paper</h2>
+            <h2 className="text-sm font-semibold text-white/90" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Ask about this paper
+            </h2>
             {conversations.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors duration-300"
+                className="p-1 hover:bg-white/10 rounded-lg text-white/50 hover:text-white/70 transition-colors duration-300"
                 title="Clear chat history"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -356,30 +368,30 @@ export default function PaperDetailPage() {
           <div className="flex-1 overflow-auto px-6 pb-6 space-y-4">
             {conversations.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500">No questions yet</p>
-                <p className="text-xs text-gray-400 mt-1">Ask anything about this paper</p>
+                <p className="text-sm text-white/60">No questions yet</p>
+                <p className="text-xs text-white/40 mt-1">Ask anything about this paper</p>
               </div>
             ) : (
               conversations.map((conv) => (
                 <div key={conv.id} className="space-y-3">
                   <div className="flex justify-end">
-                    <div className="bg-gray-100 text-[#1A1A1A] px-4 py-2 rounded-lg max-w-[80%] text-sm">
+                    <div className="bg-white/20 text-white px-4 py-2 rounded-2xl max-w-[80%] text-sm backdrop-blur-sm">
                       {conv.user_message}
                     </div>
                   </div>
                   <div className="flex justify-start">
-                    <div className="bg-gray-50 text-gray-700 px-4 py-2 rounded-lg max-w-[80%] text-sm">
-                      <ReactMarkdown className="prose prose-sm max-w-none">
+                    <div className="bg-white/10 text-white/80 px-4 py-2 rounded-2xl max-w-[80%] text-sm backdrop-blur-sm">
+                      <ReactMarkdown className="prose prose-sm max-w-none prose-invert">
                         {conv.ai_response}
                       </ReactMarkdown>
                       {conv.retrieval_mode && (
                         <div className="mt-2 pt-2">
                           {conv.retrieval_mode === 'hybrid_chunks' && conv.source_chunks?.length ? (
                             <div className="space-y-1.5">
-                              <p className="text-[10px] font-medium text-gray-500 uppercase">Sources</p>
+                              <p className="text-[10px] font-medium text-white/50 uppercase">Sources</p>
                               {conv.source_chunks.slice(0, 4).map((chunk) => (
-                                <div key={chunk.id} className="text-[11px] text-gray-500">
-                                  <span className="font-medium text-gray-600">
+                                <div key={chunk.id} className="text-[11px] text-white/50">
+                                  <span className="font-medium text-white/60">
                                     Chunk {chunk.chunk_index}
                                     {chunk.page_start ? ` · p.${chunk.page_start}` : ''}
                                     {' · '}
@@ -390,7 +402,7 @@ export default function PaperDetailPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[11px] text-gray-500">Used full paper context</p>
+                            <p className="text-[11px] text-white/50">Used full paper context</p>
                           )}
                         </div>
                       )}
@@ -410,13 +422,13 @@ export default function PaperDetailPage() {
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
                 placeholder={paper.is_downloaded ? 'Ask a question...' : 'Download PDF before asking...'}
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors duration-300"
+                className="flex-1 px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:border-white/40 focus:bg-white/15 text-white placeholder-white/50 transition-all duration-300"
                 disabled={asking || !paper.is_downloaded}
               />
               <button
                 onClick={handleAskQuestion}
                 disabled={!question.trim() || asking || !paper.is_downloaded}
-                className="px-4 py-2 bg-[#1A1A1A] text-white text-sm rounded-lg hover:bg-[#3B82F6] disabled:opacity-40 transition-all duration-300"
+                className="px-4 py-2.5 bg-white/20 text-white text-sm rounded-xl hover:bg-white/30 disabled:opacity-40 backdrop-blur-sm border border-white/20 transition-all duration-300"
               >
                 {asking ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
