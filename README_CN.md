@@ -22,8 +22,11 @@ https://github.com/user-attachments/assets/880cb912-5e25-4a0f-b684-710d7716dbaf
 
 ## 快速开始
 
+> ⚠️ **本项目仅支持 macOS 系统，不支持 Windows 和 Linux。**
+
 ### 环境要求
 
+- macOS
 - Python 3.11+
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)

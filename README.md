@@ -22,8 +22,11 @@ English | [中文](README_CN.md)
 
 ## Quick Start
 
+> ⚠️ **This project only supports macOS.** Windows and Linux are not supported.
+
 ### Prerequisites
 
+- macOS
 - Python 3.11+
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
