@@ -71,14 +71,21 @@ class ArxivService:
                 self.__class__._last_request_at = time.monotonic()
 
     async def _backoff_after_error(self, error: Exception, attempt: int) -> None:
-        """Apply a shared cooldown after 403/429 responses."""
+        """Apply a shared cooldown after 403/429 responses or timeouts."""
         wait_seconds = self.settings.arxiv_rate_limit_backoff_seconds * (2 ** attempt)
         self.__class__._cooldown_until = max(
             self.__class__._cooldown_until,
             time.monotonic() + wait_seconds,
         )
+        status_code = self._status_code_from_error(error)
+        if status_code:
+            error_desc = f"status {status_code}"
+        elif isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+            error_desc = "timeout"
+        else:
+            error_desc = type(error).__name__
         logger.warning(
-            f"arXiv returned {self._status_code_from_error(error)}; "
+            f"arXiv request failed ({error_desc}); "
             f"backing off for {wait_seconds:.0f}s"
         )
         await asyncio.sleep(wait_seconds)
@@ -156,6 +163,13 @@ class ArxivService:
                     ),
                 )
                 break
+            except (asyncio.TimeoutError, TimeoutError) as e:
+                logger.warning(f"arXiv search timed out (attempt {attempt + 1}/{self.settings.arxiv_max_retries + 1})")
+                if attempt < self.settings.arxiv_max_retries:
+                    await self._backoff_after_error(e, attempt)
+                    continue
+                logger.warning(f"arXiv search timed out after {attempt + 1} attempts")
+                return papers
             except Exception as e:
                 if self._should_backoff(e) and attempt < self.settings.arxiv_max_retries:
                     await self._backoff_after_error(e, attempt)
@@ -243,6 +257,13 @@ class ArxivService:
         for attempt in range(self.settings.arxiv_max_retries + 1):
             try:
                 return await self._run_serial_arxiv_request("download arXiv PDF", _download_once)
+            except (asyncio.TimeoutError, TimeoutError) as e:
+                logger.warning(f"PDF download timed out (attempt {attempt + 1}/{self.settings.arxiv_max_retries + 1})")
+                if attempt < self.settings.arxiv_max_retries:
+                    await self._backoff_after_error(e, attempt)
+                    continue
+                logger.error(f"PDF download timed out after {attempt + 1} attempts")
+                return None
             except Exception as e:
                 if self._should_backoff(e) and attempt < self.settings.arxiv_max_retries:
                     await self._backoff_after_error(e, attempt)
