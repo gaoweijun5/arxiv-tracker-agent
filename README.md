@@ -11,8 +11,8 @@ English | [中文](README_CN.md)
 
 ## Features
 
-- **Autonomous Paper Agent** - ReAct agent that independently decides search strategy, analyzes papers, and saves the best ones
-- **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range
+- **Autonomous Paper Agent** - StateGraph workflow that automatically discovers, analyzes, and saves papers with multiple fallback strategies
+- **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range and multiple search strategies
 - **AI Summarization** - Generate summaries, key findings, and Chinese translations via OpenAI-compatible or Anthropic API
 - **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
 - **Research Reports** - Generate a persistent Markdown research report after every manual or scheduled fetch
@@ -20,6 +20,8 @@ English | [中文](README_CN.md)
 - **Real-time Progress** - WebSocket-powered live updates during paper fetching
 - **Paper Management** - Bookmark, mark as read, filter, batch delete papers
 - **LangSmith Observability** - Full tracing of agent decisions and LLM calls
+- **Automatic Fallbacks** - LLM failures fall back to local scoring; API timeouts retry with exponential backoff
+- **Weekly Cleanup** - Automatic cleanup of old unread papers (non-bookmarked, read papers older than 30 days)
 
 ## Quick Start
 
@@ -164,8 +166,8 @@ This usually means the OpenAI-compatible LLM endpoint failed during agent tool c
 │  LangGraph    │ │   Services    │ │   Storage     │
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
-│ (ReAct)       │ │ - LLM API    │ │ - ChromaDB    │
-│               │ │ - RAG Q&A     │ │               │
+│ (StateGraph)  │ │ - LLM API    │ │ - ChromaDB    │
+│ - QA Agent    │ │ - RAG Q&A     │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
                           │
                           ▼
@@ -175,29 +177,52 @@ This usually means the OpenAI-compatible LLM endpoint failed during agent tool c
                    └─────────────┘
 ```
 
-### Paper Agent (ReAct)
+### Paper Agent (StateGraph Workflow)
 
-The Paper Agent uses LangGraph's `create_react_agent` to autonomously discover, analyze, and save papers:
+The Paper Agent uses LangGraph's `StateGraph` to implement a deterministic paper discovery workflow with automatic fallback mechanisms:
 
 ```
-User: "Find papers matching my interests"
+User: "Fetch Papers"
   │
   ▼
-┌─────────────────────────────────────────────┐
-│            ReAct Loop (LLM-driven)           │
-│                                              │
-│  1. get_user_interests() → understand topics │
-│  2. get_user_feedback_summary() → learn prefs│
-│  3. search_arxiv() → find papers             │
-│  4. check_paper_exists() → skip duplicates   │
-│  5. check_relevance() → quick filter         │
-│  6. analyze_paper() → full analysis          │
-│  7. save_paper() → save best metadata        │
-│                                              │
-│  LLM decides tool order and adjusts strategy │
-│  based on results (reflection)               │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│              StateGraph Workflow (Deterministic)              │
+│                                                              │
+│  ┌──────────────┐    ┌──────────────────┐    ┌────────────┐ │
+│  │ Load Context │───▶│ Build Query Plan │───▶│ Search Loop│ │
+│  │              │    │                  │    │            │ │
+│  │ • Interests  │    │ • Primary search │    │ • Execute  │ │
+│  │ • Feedback   │    │ • Category only  │    │   searches │ │
+│  └──────────────┘    │ • Keyword only   │    │ • Fallback │ │
+│                      │ • Expanded days  │    │   strategies│ │
+│                      └──────────────────┘    └─────┬──────┘ │
+│                                                    │        │
+│                                                    ▼        │
+│  ┌──────────────┐    ┌──────────────────┐    ┌────────────┐ │
+│  │  Save Loop   │◀───│  LLM Analysis    │◀───│ Local Score│ │
+│  │              │    │                  │    │            │ │
+│  │ • Save to DB │    │ • Generate summary│    │ • Keyword  │ │
+│  │ • Update     │    │ • Check relevance │    │   matching │ │
+│  │   vectors    │    │ • Fallback if    │    │ • Category │ │
+│  └──────┬───────┘    │   LLM fails      │    │   matching │ │
+│         │            └──────────────────┘    └────────────┘ │
+│         ▼                                                    │
+│  ┌──────────────┐    ┌──────────────────┐                    │
+│  │  Finalize    │───▶│  Generate Report │                    │
+│  │              │    │                  │                    │
+│  │ • Stats      │    │ • LLM-generated  │                    │
+│  │ • Errors     │    │ • Fallback       │                    │
+│  │ • Fallbacks  │    │   template       │                    │
+│  └──────────────┘    └──────────────────┘                    │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+**Key Features:**
+- **Deterministic Flow**: Predefined node sequence instead of LLM-driven tool selection
+- **Multiple Search Strategies**: Each interest generates 4-6 search attempts with different parameters
+- **Local Scoring**: Fast keyword/category matching before expensive LLM analysis
+- **Automatic Fallbacks**: LLM failures fall back to local scoring; timeouts retry with exponential backoff
+- **Rate Limit Handling**: Automatic backoff on 429/403 responses from arXiv API
 
 ## License
 
