@@ -159,3 +159,35 @@ export interface SearchResult {
   score: number
   snippet: string
 }
+
+/** Topic Explorer types */
+export interface ExplorePaper {
+  arxiv_id: string
+  title: string
+  authors: string[]
+  abstract: string
+  categories: string[]
+  published_date: string
+  pdf_url: string | null
+  relevance_score: number
+  relevance_reason: string
+  summary: string
+}
+
+export interface ExploreResult {
+  status: string
+  query: string
+  topic_understanding: string
+  keywords: string[]
+  expanded_keywords: string[]
+  categories: string[]
+  papers: ExplorePaper[]
+  total_found: number
+  total_analyzed: number
+}
+
+export interface ExploreResponse {
+  status: string
+  task_id: string
+  message: string
+}

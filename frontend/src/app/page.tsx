@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, ArrowRight, FileText } from 'lucide-react'
+import { Search, ArrowRight, FileText, Sparkles } from 'lucide-react'
 import { systemApi, recommendationsApi, reportsApi } from '../services/api'
 import type { SystemStats, Recommendation, ResearchReport } from '../types'
 import FetchModal from '../components/FetchModal'
+import TopicExplorer from '../components/TopicExplorer'
 import { format } from 'date-fns'
 
 export default function HomePage() {
@@ -63,6 +64,20 @@ export default function HomePage() {
           <Search className="w-4 h-4" />
           Fetch Papers
         </button>
+      </div>
+
+      {/* Topic Explorer */}
+      <div className="glass-card p-6 fade-in stagger-2">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-indigo-500" />
+          <h2 className="text-lg font-semibold text-gray-800" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            Explore a Topic
+          </h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Ask a question or describe a research topic, and AI will find relevant papers for you
+        </p>
+        <TopicExplorer onPaperSaved={() => loadData()} />
       </div>
 
       {/* Stats */}

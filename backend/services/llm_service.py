@@ -29,6 +29,16 @@ class RelevanceCheck(BaseModel):
     reason: str = Field(description="Explanation of relevance")
 
 
+class TopicUnderstanding(BaseModel):
+    """Topic understanding result from natural language query."""
+
+    understanding: str = Field(description="Understanding of the user's topic")
+    keywords: list[str] = Field(description="Core keywords for search (3-5)")
+    expanded_keywords: list[str] = Field(description="Expanded keywords for broader search")
+    categories: list[str] = Field(description="Recommended arXiv categories")
+    search_queries: list[dict] = Field(description="Multiple search strategies")
+
+
 def parse_json_from_response(text: str) -> dict:
     """Extract JSON from LLM response text."""
     # Try to find JSON in the response
@@ -193,6 +203,92 @@ Papers:
 Create the Markdown research report."""),
         ])
         self.report_chain = report_prompt | self.llm | StrOutputParser()
+
+        # Topic understanding chain for explore feature
+        topic_understanding_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert research assistant helping users explore academic topics.
+Your task is to understand the user's natural language query about a research topic and extract structured information for searching arXiv papers.
+
+Analyze the query and provide:
+1. A clear understanding of what the user is asking about
+2. Core keywords (3-5) that are most relevant
+3. Expanded keywords (5-10) including synonyms and related terms
+4. Recommended arXiv categories (2-3) where relevant papers are likely published
+5. Multiple search strategies with different keyword combinations
+
+Common arXiv categories:
+- cs.AI: Artificial Intelligence
+- cs.CL: Computation and Language (NLP)
+- cs.CV: Computer Vision
+- cs.LG: Machine Learning
+- cs.MA: Multiagent Systems
+- cs.NE: Neural and Evolutionary Computing
+- stat.ML: Machine Learning (Statistics)
+- cs.IR: Information Retrieval
+- cs.RO: Robotics
+- math.OC: Optimization and Control
+
+You MUST respond with valid JSON only. Use this exact format:
+{{
+    "understanding": "Clear description of what the user wants to explore",
+    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "expanded_keywords": ["keyword1", "keyword2", "synonym1", "related_term1"],
+    "categories": ["cs.LG", "cs.AI"],
+    "search_queries": [
+        {{"keywords": ["keyword1", "keyword2"], "categories": ["cs.LG"], "description": "Primary search"}},
+        {{"keywords": ["synonym1", "related_term1"], "categories": ["cs.AI"], "description": "Broader search"}}
+    ]
+}}"""),
+            ("human", """User's research query: {query}
+
+Extract keywords, categories, and create search strategies for this topic."""),
+        ])
+        self.topic_understanding_chain = topic_understanding_prompt | self.llm | StrOutputParser()
+
+    async def understand_topic(self, query: str) -> TopicUnderstanding:
+        """Understand a natural language topic query and extract search parameters.
+
+        Args:
+            query: User's natural language query about a research topic
+
+        Returns:
+            TopicUnderstanding object with keywords, categories, and search strategies
+        """
+        try:
+            response = await self.topic_understanding_chain.ainvoke({
+                "query": query,
+            })
+
+            # Parse JSON response
+            data = parse_json_from_response(response)
+
+            if not data:
+                # Fallback if JSON parsing fails
+                return TopicUnderstanding(
+                    understanding=f"Searching for papers about: {query}",
+                    keywords=query.split()[:5],
+                    expanded_keywords=query.split(),
+                    categories=["cs.AI", "cs.LG"],
+                    search_queries=[
+                        {"keywords": query.split()[:5], "categories": ["cs.AI", "cs.LG"], "description": "Fallback search"}
+                    ]
+                )
+
+            logger.info(f"Understood topic: {data.get('understanding', '')[:100]}...")
+            return TopicUnderstanding(**data)
+
+        except Exception as e:
+            logger.error(f"Failed to understand topic: {e}")
+            # Return fallback understanding
+            return TopicUnderstanding(
+                understanding=f"Searching for papers about: {query}",
+                keywords=query.split()[:5],
+                expanded_keywords=query.split(),
+                categories=["cs.AI", "cs.LG"],
+                search_queries=[
+                    {"keywords": query.split()[:5], "categories": ["cs.AI", "cs.LG"], "description": "Fallback search"}
+                ]
+            )
 
     async def generate_summary(
         self,

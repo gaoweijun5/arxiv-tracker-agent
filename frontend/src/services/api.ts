@@ -14,6 +14,8 @@ import type {
   SystemStats,
   FetchLog,
   SearchResult,
+  ExploreResponse,
+  ExplorePaper,
 } from '../types'
 
 const api = axios.create({
@@ -269,6 +271,23 @@ export const reportsApi = {
 
   batchDelete: async (reportIds: number[]): Promise<{ deleted: number }> => {
     const { data } = await api.post('/reports/batch-delete', { report_ids: reportIds })
+    return data
+  },
+}
+
+/** Explore API */
+export const exploreApi = {
+  start: async (query: string, maxResults?: number): Promise<ExploreResponse> => {
+    const { data } = await api.post('/explore', { query, max_results: maxResults || 10 })
+    return data
+  },
+
+  cancel: async (taskId: string): Promise<void> => {
+    await api.post(`/explore/${taskId}/cancel`)
+  },
+
+  savePaper: async (paper: ExplorePaper): Promise<{ status: string; message: string; paper_id?: number; is_new: boolean }> => {
+    const { data } = await api.post('/explore/save', paper)
     return data
   },
 }
