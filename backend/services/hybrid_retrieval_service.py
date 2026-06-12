@@ -1,7 +1,9 @@
 """Hybrid SQLite FTS + Chroma retrieval for paper Q&A."""
 
+import asyncio
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from langchain_core.documents import Document
@@ -10,7 +12,7 @@ from sqlalchemy import delete, select, text
 
 from backend.core.config import get_settings
 from backend.models.database import PaperChunk, get_session_factory
-from backend.services.pdf_service import get_pdf_service
+from backend.services.pdf_service import ParsedPaper, ParsedPaperChunk, get_pdf_service
 from backend.services.vector_store import get_vector_store
 
 
@@ -49,19 +51,37 @@ class HybridRetrievalService:
         self.vector_store = get_vector_store()
         self.pdf_service = get_pdf_service()
 
-    async def replace_paper_chunks(
+    async def replace_paper_chunks_from_pdf(
         self,
         paper_id: int,
         arxiv_id: str,
         title: str,
-        full_text: str,
+        pdf_path: Path | str,
+    ) -> tuple[list[PaperChunk], ParsedPaper]:
+        """Parse a PDF with Docling, replace chunks, and sync SQLite FTS + Chroma."""
+        parsed = await asyncio.to_thread(self.pdf_service.parse_pdf, Path(pdf_path))
+        chunk_rows = await self._replace_parsed_chunks(
+            paper_id=paper_id,
+            arxiv_id=arxiv_id,
+            title=title,
+            chunks=parsed.chunks,
+            parser=parsed.parser,
+            chunker=parsed.chunker,
+        )
+        return chunk_rows, parsed
+
+    async def _replace_parsed_chunks(
+        self,
+        paper_id: int,
+        arxiv_id: str,
+        title: str,
+        chunks: list[ParsedPaperChunk],
+        parser: str,
+        chunker: str,
     ) -> list[PaperChunk]:
         """Replace persisted chunks for a paper and sync SQLite FTS + Chroma."""
-        chunks = self.pdf_service.chunk_text(full_text)
-        if not chunks:
-            return []
+        chunk_texts = [chunk.content for chunk in chunks]
 
-        page_ranges = [self._page_range(chunk) for chunk in chunks]
         factory = get_session_factory()
         async with factory() as session:
             await session.execute(
@@ -70,14 +90,24 @@ class HybridRetrievalService:
             )
             await session.execute(delete(PaperChunk).where(PaperChunk.paper_id == paper_id))
 
+            try:
+                await self.vector_store.delete_paper_chunks(arxiv_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete old Chroma chunks for {arxiv_id}: {e}")
+
+            if not chunks:
+                await session.commit()
+                logger.warning(f"No chunks generated for paper {arxiv_id}")
+                return []
+
             chunk_rows = [
                 PaperChunk(
                     paper_id=paper_id,
                     arxiv_id=arxiv_id,
                     chunk_index=i,
-                    content=chunk,
-                    page_start=page_ranges[i][0],
-                    page_end=page_ranges[i][1],
+                    content=chunk.content,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
                 )
                 for i, chunk in enumerate(chunks)
             ]
@@ -85,19 +115,20 @@ class HybridRetrievalService:
             await session.flush()
 
             metadatas = [
-                {
-                    "paper_chunk_id": chunk.id,
-                    "page_start": chunk.page_start,
-                    "page_end": chunk.page_end,
-                }
-                for chunk in chunk_rows
+                self._chunk_metadata(
+                    chunk=chunk,
+                    parsed_chunk=chunks[i],
+                    parser=parser,
+                    chunker=chunker,
+                )
+                for i, chunk in enumerate(chunk_rows)
             ]
 
             try:
                 vector_ids = await self.vector_store.add_paper_chunks(
                     arxiv_id=arxiv_id,
                     title=title,
-                    chunks=chunks,
+                    chunks=chunk_texts,
                     metadatas=metadatas,
                 )
                 for chunk, vector_id in zip(chunk_rows, vector_ids):
@@ -122,6 +153,25 @@ class HybridRetrievalService:
             await session.commit()
             logger.info(f"Persisted {len(chunk_rows)} chunks for paper {arxiv_id}")
             return chunk_rows
+
+    def _chunk_metadata(
+        self,
+        chunk: PaperChunk,
+        parsed_chunk: ParsedPaperChunk,
+        parser: str,
+        chunker: str,
+    ) -> dict:
+        metadata = {
+            "paper_chunk_id": chunk.id,
+            "page_start": chunk.page_start,
+            "page_end": chunk.page_end,
+            "chunk_heading": parsed_chunk.heading,
+            "chunk_kind": parsed_chunk.kind,
+            "block_count": parsed_chunk.block_count,
+            "parser": parser,
+            "chunker": chunker,
+        }
+        return {key: value for key, value in metadata.items() if value is not None}
 
     async def has_chunks(self, paper_id: int) -> bool:
         """Return whether a paper has persisted chunks."""

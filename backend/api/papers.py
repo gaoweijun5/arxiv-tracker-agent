@@ -234,11 +234,9 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No PDF URL available")
 
     try:
-        from backend.services.pdf_service import get_pdf_service
         from backend.services.arxiv_service import get_arxiv_service
         from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
 
-        pdf_service = get_pdf_service()
         arxiv_service = get_arxiv_service()
         hybrid_retrieval = get_hybrid_retrieval_service()
 
@@ -246,18 +244,15 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         if not pdf_path:
             raise HTTPException(status_code=502, detail="Failed to download PDF from arXiv")
 
-        # Extract text
-        full_text = pdf_service.extract_text(pdf_path)
-        if not full_text:
-            raise HTTPException(status_code=500, detail="Failed to extract text from PDF")
-
-        # Chunk and store in SQLite FTS + Chroma for hybrid Q&A retrieval
-        chunks = await hybrid_retrieval.replace_paper_chunks(
+        # Parse with Docling and store paragraph-aware chunks in SQLite FTS + Chroma.
+        chunks, parsed = await hybrid_retrieval.replace_paper_chunks_from_pdf(
             paper_id=paper.id,
             arxiv_id=paper.arxiv_id,
             title=paper.title,
-            full_text=full_text,
+            pdf_path=pdf_path,
         )
+        if not chunks:
+            raise HTTPException(status_code=500, detail="Failed to generate chunks from PDF")
 
         # Update database
         paper.local_pdf_path = str(pdf_path)
@@ -267,8 +262,11 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
         return {
             "message": "PDF downloaded and processed",
             "arxiv_id": paper.arxiv_id,
-            "text_length": len(full_text),
+            "text_length": len(parsed.full_text),
             "chunks": len(chunks),
+            "parser": parsed.parser,
+            "chunker": parsed.chunker,
+            "table_blocks_removed": parsed.table_blocks_removed,
         }
 
     except HTTPException:
@@ -279,17 +277,15 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/rebuild-chunks")
-async def rebuild_chunks(db: AsyncSession = Depends(get_db)):
-    """Backfill chunks for papers that were downloaded before hybrid retrieval was added."""
-    from backend.services.pdf_service import get_pdf_service
+async def rebuild_chunks(force: bool = False, db: AsyncSession = Depends(get_db)):
+    """Backfill or rebuild chunks for downloaded papers."""
     from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
     from pathlib import Path
 
-    pdf_service = get_pdf_service()
     hybrid_retrieval = get_hybrid_retrieval_service()
 
     result = await db.execute(
-        select(Paper).where(Paper.is_downloaded == True, Paper.local_pdf_path.isnot(None))
+        select(Paper).where(Paper.is_downloaded.is_(True), Paper.local_pdf_path.isnot(None))
     )
     papers = result.scalars().all()
 
@@ -299,7 +295,7 @@ async def rebuild_chunks(db: AsyncSession = Depends(get_db)):
 
     for paper in papers:
         has_chunks = await hybrid_retrieval.has_chunks(paper.id)
-        if has_chunks:
+        if has_chunks and not force:
             skipped += 1
             continue
 
@@ -309,16 +305,18 @@ async def rebuild_chunks(db: AsyncSession = Depends(get_db)):
             continue
 
         try:
-            full_text = pdf_service.extract_text(pdf_path)
-            if not full_text:
-                errors.append(f"{paper.arxiv_id}: failed to extract text")
-                continue
-
-            await hybrid_retrieval.replace_paper_chunks(
+            chunks, parsed = await hybrid_retrieval.replace_paper_chunks_from_pdf(
                 paper_id=paper.id,
                 arxiv_id=paper.arxiv_id,
                 title=paper.title,
-                full_text=full_text,
+                pdf_path=pdf_path,
+            )
+            if not chunks:
+                errors.append(f"{paper.arxiv_id}: Docling generated 0 chunks")
+                continue
+            logger.info(
+                f"Rebuilt {len(chunks)} chunks for {paper.arxiv_id}; "
+                f"dropped {parsed.table_blocks_removed} table blocks"
             )
             processed += 1
         except Exception as e:

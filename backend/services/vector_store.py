@@ -334,6 +334,17 @@ class VectorStoreService:
         self.papers_store.delete(where={"arxiv_id": arxiv_id})
         logger.info(f"Deleted paper {arxiv_id} from vector store")
 
+    async def delete_paper_chunks(self, arxiv_id: str) -> None:
+        """Delete only full-text chunks for a paper from the vector store."""
+        if self.papers_store is None:
+            logger.warning("Vector store unavailable, skipping paper chunks deletion")
+            return
+
+        self.papers_store.delete(
+            where=self._normalize_filter({"arxiv_id": arxiv_id, "type": "paper_chunk"})
+        )
+        logger.info(f"Deleted paper chunks for {arxiv_id} from vector store")
+
 # Singleton instance
 _vector_store_service: Optional[VectorStoreService] = None
 

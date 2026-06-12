@@ -6,7 +6,6 @@ from loguru import logger
 
 from backend.services.vector_store import get_vector_store
 from backend.services.llm_service import get_llm_service
-from backend.services.pdf_service import get_pdf_service
 from backend.models.database import get_session_factory, Paper, Conversation
 
 
@@ -16,7 +15,6 @@ class RAGService:
     def __init__(self):
         self.vector_store = get_vector_store()
         self.llm_service = get_llm_service()
-        self.pdf_service = get_pdf_service()
         from backend.services.hybrid_retrieval_service import get_hybrid_retrieval_service
         self.hybrid_retrieval = get_hybrid_retrieval_service()
 
@@ -90,16 +88,25 @@ class RAGService:
 
         if not context:
             retrieval_mode = "full_text"
-            if has_local_pdf:
-                try:
-                    context = self.pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
-                    logger.info(f"Loaded {len(context)} chars from local PDF")
-                except Exception as e:
-                    logger.warning(f"Failed to extract text from PDF: {e}")
-
-            if not context and has_chunks:
+            if has_chunks:
                 context = await self.hybrid_retrieval.get_full_text_from_chunks(paper_id)
                 logger.info(f"Reconstructed {len(context)} chars from persisted chunks")
+
+            if not context and has_local_pdf:
+                try:
+                    chunk_rows, parsed = await self.hybrid_retrieval.replace_paper_chunks_from_pdf(
+                        paper_id=paper.id,
+                        arxiv_id=paper.arxiv_id,
+                        title=paper.title,
+                        pdf_path=Path(paper.local_pdf_path),
+                    )
+                    context = parsed.full_text
+                    logger.info(
+                        f"Parsed local PDF into {len(chunk_rows)} chunks and loaded "
+                        f"{len(context)} chars"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to parse local PDF with Docling: {e}")
 
         if not context:
             return {

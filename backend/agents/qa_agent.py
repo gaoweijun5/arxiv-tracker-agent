@@ -36,6 +36,7 @@ def create_qa_workflow() -> StateGraph:
     async def retrieve_context(state: QAState) -> QAState:
         """Node: Load full paper text for Q&A."""
         logger.info("Loading full paper text for Q&A...")
+        import asyncio
         from pathlib import Path
         from backend.services.pdf_service import get_pdf_service
         from backend.models.database import get_session_factory, Paper
@@ -63,9 +64,13 @@ def create_qa_workflow() -> StateGraph:
         # Try local PDF
         if paper and paper.local_pdf_path and Path(paper.local_pdf_path).exists():
             try:
-                context = pdf_service.extract_text(Path(paper.local_pdf_path)) or ""
+                parsed = await asyncio.to_thread(
+                    pdf_service.parse_pdf,
+                    Path(paper.local_pdf_path),
+                )
+                context = parsed.full_text
             except Exception as e:
-                logger.warning(f"Failed to extract from PDF: {e}")
+                logger.warning(f"Failed to parse PDF with Docling: {e}")
 
         if not context:
             context = state.get("abstract", "")

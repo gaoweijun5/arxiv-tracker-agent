@@ -36,6 +36,10 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
+reports/
+
+tests/
+
 # OS
 .DS_Store
 Thumbs.db
