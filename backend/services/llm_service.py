@@ -39,6 +39,12 @@ class TopicUnderstanding(BaseModel):
     search_queries: list[dict] = Field(description="Multiple search strategies")
 
 
+class QueryRewrite(BaseModel):
+    """Query rewrite result for RAG retrieval."""
+
+    queries: list[str] = Field(description="Semantic-preserving query variants")
+
+
 def parse_json_from_response(text: str) -> dict:
     """Extract JSON from LLM response text."""
     # Try to find JSON in the response
@@ -159,6 +165,27 @@ Authors: {authors}"""),
             ("human", "{question}"),
         ])
         self.qa_chain = qa_prompt | self.llm | StrOutputParser()
+
+        # Query rewriting chain for multi-query RAG retrieval
+        query_rewrite_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You rewrite user questions for academic paper retrieval.
+Generate semantically equivalent query variants that preserve the user's intent.
+
+Rules:
+- Do not answer the question.
+- Do not add new requirements, entities, or constraints.
+- Preserve important technical terms, citations, method names, datasets, and acronyms.
+- Vary wording, synonyms, and phrasing so lexical and semantic retrieval can find more evidence.
+- Return valid JSON only in this exact format:
+{{
+    "queries": ["variant 1", "variant 2"]
+}}"""),
+            ("human", """Original user question:
+{query}
+
+Generate exactly {count} rewritten queries."""),
+        ])
+        self.query_rewrite_chain = query_rewrite_prompt | self.llm | StrOutputParser()
 
         # Daily digest chain
         digest_prompt = ChatPromptTemplate.from_messages([
@@ -432,6 +459,41 @@ Extract keywords, categories, and create search strategies for this topic."""),
         except Exception as e:
             logger.error(f"Failed to answer question: {e}")
             raise
+
+    async def rewrite_query(self, query: str, count: int) -> list[str]:
+        """Generate semantic-preserving query variants for RAG retrieval."""
+        if count <= 0:
+            return []
+
+        try:
+            response = await self.query_rewrite_chain.ainvoke({
+                "query": query,
+                "count": count,
+            })
+            data = parse_json_from_response(response)
+            rewrites = QueryRewrite(**data).queries if data else []
+        except Exception as e:
+            logger.warning(f"Failed to rewrite query for RAG retrieval: {e}")
+            return []
+
+        normalized_original = self._normalize_query(query)
+        unique_rewrites = []
+        seen = {normalized_original}
+        for rewrite in rewrites:
+            rewrite = (rewrite or "").strip()
+            normalized = self._normalize_query(rewrite)
+            if not rewrite or normalized in seen:
+                continue
+            seen.add(normalized)
+            unique_rewrites.append(rewrite)
+            if len(unique_rewrites) >= count:
+                break
+
+        logger.info(f"Generated {len(unique_rewrites)} query rewrites for RAG")
+        return unique_rewrites
+
+    def _normalize_query(self, query: str) -> str:
+        return " ".join((query or "").casefold().split())
 
     async def generate_daily_digest(self, papers: list[dict]) -> str:
         """Generate a newspaper-style digest of papers.

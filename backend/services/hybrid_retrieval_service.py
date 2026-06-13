@@ -2,7 +2,7 @@
 
 import asyncio
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +24,8 @@ class RetrievedChunk:
     rrf_score: float = 0.0
     semantic_score: float = 0.0
     keyword_score: float = 0.0
+    matched_queries: list[str] = field(default_factory=list)
+    retrieval_sources: list[str] = field(default_factory=list)
 
     @property
     def confidence(self) -> float:
@@ -39,8 +41,19 @@ class RetrievedChunk:
             "semantic_score": round(self.semantic_score, 4),
             "keyword_score": round(self.keyword_score, 4),
             "rrf_score": round(self.rrf_score, 6),
+            "matched_queries": self.matched_queries,
+            "retrieval_sources": self.retrieval_sources,
             "snippet": self.chunk.content[:300],
         }
+
+
+@dataclass(frozen=True)
+class RetrievalRanking:
+    """One ranked retrieval list produced by one query and one retrieval source."""
+
+    query: str
+    source: str
+    ranked: list[tuple[int, float]]
 
 
 class HybridRetrievalService:
@@ -200,15 +213,70 @@ class HybridRetrievalService:
         arxiv_id: str,
         query: str,
     ) -> tuple[list[RetrievedChunk], bool]:
-        """Run semantic + keyword retrieval and decide whether chunks are confident enough."""
+        """Run multi-query semantic + BM25 retrieval and fuse results with RRF."""
         candidate_limit = self.settings.rag_retrieval_candidates
-        semantic_ranked = await self._semantic_search(arxiv_id, query, candidate_limit)
-        keyword_ranked = await self._keyword_search(paper_id, query, candidate_limit)
-        merged = await self._merge_rankings(paper_id, query, semantic_ranked, keyword_ranked)
+        retrieval_queries = await self._retrieval_queries(query)
+        rankings: list[RetrievalRanking] = []
+
+        for retrieval_query in retrieval_queries:
+            semantic_ranked = await self._semantic_search(
+                arxiv_id,
+                retrieval_query,
+                candidate_limit,
+            )
+            keyword_ranked = await self._keyword_search(
+                paper_id,
+                retrieval_query,
+                candidate_limit,
+            )
+            rankings.extend([
+                RetrievalRanking(
+                    query=retrieval_query,
+                    source="semantic",
+                    ranked=semantic_ranked,
+                ),
+                RetrievalRanking(
+                    query=retrieval_query,
+                    source="bm25",
+                    ranked=keyword_ranked,
+                ),
+            ])
+
+        merged = await self._merge_rankings(paper_id, rankings)
         top_chunks = merged[: self.settings.rag_chunk_top_k]
         max_confidence = max((c.confidence for c in top_chunks), default=0.0)
         use_chunks = max_confidence >= self.settings.rag_confidence_threshold
+        logger.info(
+            f"Hybrid retrieval used {len(retrieval_queries)} queries, "
+            f"{len(rankings)} ranked lists, {len(merged)} unique chunks"
+        )
         return top_chunks, use_chunks
+
+    async def _retrieval_queries(self, query: str) -> list[str]:
+        """Return original query plus unique rewritten variants."""
+        rewrite_count = max(0, self.settings.rag_query_rewrite_count)
+        rewrites = await self._rewrite_queries(query, rewrite_count)
+        queries = []
+        seen = set()
+        for candidate in [query, *rewrites]:
+            candidate = (candidate or "").strip()
+            normalized = self._normalize_query(candidate)
+            if not candidate or normalized in seen:
+                continue
+            seen.add(normalized)
+            queries.append(candidate)
+        return queries or [query]
+
+    async def _rewrite_queries(self, query: str, count: int) -> list[str]:
+        if count <= 0:
+            return []
+        try:
+            from backend.services.llm_service import get_llm_service
+
+            return await get_llm_service().rewrite_query(query, count)
+        except Exception as e:
+            logger.warning(f"Query rewrite unavailable; using original query only: {e}")
+            return []
 
     async def _semantic_search(
         self,
@@ -269,14 +337,13 @@ class HybridRetrievalService:
     async def _merge_rankings(
         self,
         paper_id: int,
-        query: str,
-        semantic_ranked: list[tuple[int, float]],
-        keyword_ranked: list[tuple[int, float]],
+        rankings: list[RetrievalRanking],
     ) -> list[RetrievedChunk]:
         scores: dict[int, RetrievedChunk] = {}
         chunk_ids = list(dict.fromkeys(
-            [chunk_id for chunk_id, _ in semantic_ranked]
-            + [chunk_id for chunk_id, _ in keyword_ranked]
+            chunk_id
+            for ranking in rankings
+            for chunk_id, _ in ranking.ranked
         ))
         chunks = await self._load_chunks(paper_id, chunk_ids)
 
@@ -286,15 +353,20 @@ class HybridRetrievalService:
                 scores[chunk_id] = RetrievedChunk(chunk=chunk)
 
         rrf_k = self.settings.rag_rrf_k
-        for rank, (chunk_id, semantic_score) in enumerate(semantic_ranked, start=1):
-            if chunk_id in scores:
-                scores[chunk_id].rrf_score += 1.0 / (rrf_k + rank)
-                scores[chunk_id].semantic_score = max(scores[chunk_id].semantic_score, semantic_score)
-
-        for rank, (chunk_id, keyword_score) in enumerate(keyword_ranked, start=1):
-            if chunk_id in scores:
-                scores[chunk_id].rrf_score += 1.0 / (rrf_k + rank)
-                scores[chunk_id].keyword_score = max(scores[chunk_id].keyword_score, keyword_score)
+        for ranking in rankings:
+            for rank, (chunk_id, retrieval_score) in enumerate(ranking.ranked, start=1):
+                if chunk_id not in scores:
+                    continue
+                retrieved = scores[chunk_id]
+                retrieved.rrf_score += 1.0 / (rrf_k + rank)
+                if ranking.source == "semantic":
+                    retrieved.semantic_score = max(retrieved.semantic_score, retrieval_score)
+                elif ranking.source == "bm25":
+                    retrieved.keyword_score = max(retrieved.keyword_score, retrieval_score)
+                if ranking.query not in retrieved.matched_queries:
+                    retrieved.matched_queries.append(ranking.query)
+                if ranking.source not in retrieved.retrieval_sources:
+                    retrieved.retrieval_sources.append(ranking.source)
 
         return sorted(
             scores.values(),
@@ -364,6 +436,9 @@ class HybridRetrievalService:
             token.casefold()
             for token in re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]{1,}", text_value or "")
         ]
+
+    def _normalize_query(self, query: str) -> str:
+        return " ".join((query or "").casefold().split())
 
 
 _hybrid_retrieval_service: Optional[HybridRetrievalService] = None

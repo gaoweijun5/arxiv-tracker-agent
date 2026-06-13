@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     rag_retrieval_candidates: int = 30
     rag_confidence_threshold: float = 0.7
     rag_rrf_k: int = 60
+    rag_query_rewrite_count: int = 3
 
     # Scheduler
     daily_fetch_hour: int = 8
