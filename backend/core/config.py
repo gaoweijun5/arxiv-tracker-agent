@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     embedding_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     embedding_model: str = "text-embedding-v4"
 
+    # VLM caption API for Docling table/figure enrichment (OpenAI-compatible)
+    vlm_api_key: str = ""
+    vlm_api_endpoint: str = ""
+    vlm_model: str = ""
+    vlm_temperature: float = 0.0
+    vlm_max_tokens: int = 512
+    vlm_timeout_seconds: float = 60.0
+    vlm_image_scale: float = 2.0
+
     # arXiv
     arxiv_max_results: int = 50
     arxiv_categories: list[str] = ["cs.AI", "cs.CL", "cs.CV", "cs.LG"]

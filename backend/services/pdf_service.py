@@ -4,9 +4,12 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from loguru import logger
+
+from backend.core.config import get_settings
+from backend.services.vlm_service import get_vlm_service
 
 
 @dataclass(frozen=True)
@@ -32,6 +35,18 @@ class ParsedPaper:
     chunker: str
     table_blocks_removed: int
     table_chars_removed: int
+    table_captions_added: int = 0
+    figure_captions_added: int = 0
+    caption_errors: int = 0
+
+
+@dataclass(frozen=True)
+class DoclingCaptionStats:
+    """VLM caption replacement stats for Docling table/figure blocks."""
+
+    table_captions_added: int = 0
+    figure_captions_added: int = 0
+    caption_errors: int = 0
 
 
 @dataclass(frozen=True)
@@ -47,9 +62,16 @@ class PDFService:
     """Service for processing PDF documents."""
 
     DOCLING_CHUNKER_NAME = "docling_markdown_paragraph_blocks"
+    IMAGE_PLACEHOLDER = "<!-- image -->"
+    _TABLE_BLOCK_PATTERN = re.compile(
+        r"(?P<prefix>^|\n)(?P<table>[ \t]*\|[^\n]*\|[^\n]*(?:\n[ \t]*\|[^\n]*\|[^\n]*)+)",
+        re.MULTILINE,
+    )
 
-    def __init__(self):
+    def __init__(self, vlm_service=None):
         self._docling_converter = None
+        self._docling_converter_vlm_enabled: Optional[bool] = None
+        self._vlm_service = vlm_service
 
     def parse_pdf(self, pdf_path) -> ParsedPaper:
         """Parse a PDF with Docling and create paragraph-aware chunks.
@@ -57,15 +79,18 @@ class PDFService:
         Docling handles the PDF layout parsing. We export its document model to
         Markdown and apply the project chunk policy: paragraphs are the basic
         unit, adjacent short blocks under the same heading are merged, and
-        Markdown tables are dropped instead of indexed as chunks.
+        Markdown tables are dropped unless they have been replaced by VLM
+        captions during Docling document export.
         """
         pdf_path = Path(pdf_path)
         document = self._convert_with_docling(pdf_path)
-        markdown = document.export_to_markdown()
-        parsed = self.chunk_docling_markdown(markdown)
+        markdown, caption_stats = self.export_captioned_docling_markdown(document)
+        parsed = self.chunk_docling_markdown(markdown, caption_stats=caption_stats)
         logger.info(
             f"Parsed {pdf_path.name} with Docling into {len(parsed.chunks)} chunks; "
-            f"dropped {parsed.table_blocks_removed} table blocks"
+            f"dropped {parsed.table_blocks_removed} table blocks; "
+            f"captioned {parsed.table_captions_added} tables and "
+            f"{parsed.figure_captions_added} figures"
         )
         return parsed
 
@@ -75,8 +100,10 @@ class PDFService:
         target_chars: int = 2200,
         min_chars_before_split: int = 0,
         max_standalone_chars: int = 4200,
+        caption_stats: Optional[DoclingCaptionStats] = None,
     ) -> ParsedPaper:
         """Chunk Docling Markdown by paragraph-like blocks and drop tables."""
+        caption_stats = caption_stats or DoclingCaptionStats()
         if not markdown:
             return ParsedPaper(
                 full_text="",
@@ -85,6 +112,9 @@ class PDFService:
                 chunker=self.DOCLING_CHUNKER_NAME,
                 table_blocks_removed=0,
                 table_chars_removed=0,
+                table_captions_added=caption_stats.table_captions_added,
+                figure_captions_added=caption_stats.figure_captions_added,
+                caption_errors=caption_stats.caption_errors,
             )
 
         blocks, table_blocks_removed, table_chars_removed = self._markdown_blocks(markdown)
@@ -102,6 +132,9 @@ class PDFService:
             chunker=self.DOCLING_CHUNKER_NAME,
             table_blocks_removed=table_blocks_removed,
             table_chars_removed=table_chars_removed,
+            table_captions_added=caption_stats.table_captions_added,
+            figure_captions_added=caption_stats.figure_captions_added,
+            caption_errors=caption_stats.caption_errors,
         )
 
     def _convert_with_docling(self, pdf_path: Path):
@@ -112,10 +145,234 @@ class PDFService:
                 "Docling is required for PDF parsing. Install project dependencies first."
             ) from e
 
-        if self._docling_converter is None:
-            self._docling_converter = DocumentConverter()
+        vlm_enabled = self._vlm_enabled()
+        if (
+            self._docling_converter is None
+            or self._docling_converter_vlm_enabled != vlm_enabled
+        ):
+            if vlm_enabled:
+                from docling.datamodel.base_models import InputFormat
+                from docling.datamodel.pipeline_options import PdfPipelineOptions
+                from docling.document_converter import PdfFormatOption
+
+                settings = get_settings()
+                pipeline_options = PdfPipelineOptions()
+                pipeline_options.generate_page_images = True
+                pipeline_options.images_scale = settings.vlm_image_scale
+                self._docling_converter = DocumentConverter(
+                    format_options={
+                        InputFormat.PDF: PdfFormatOption(
+                            pipeline_options=pipeline_options,
+                        )
+                    }
+                )
+            else:
+                self._docling_converter = DocumentConverter()
+            self._docling_converter_vlm_enabled = vlm_enabled
         result = self._docling_converter.convert(pdf_path)
         return result.document
+
+    def export_captioned_docling_markdown(self, document: Any) -> tuple[str, DoclingCaptionStats]:
+        """Export Docling Markdown, replacing tables/figures with VLM captions when enabled."""
+        markdown = document.export_to_markdown(image_placeholder=self.IMAGE_PLACEHOLDER)
+        vlm = self._get_vlm_service()
+        if not getattr(vlm, "is_configured", False):
+            return markdown, DoclingCaptionStats()
+
+        table_captions_added = 0
+        figure_captions_added = 0
+        caption_errors = 0
+        table_cursor = 0
+        image_cursor = 0
+
+        for item, _level in document.iterate_items(traverse_pictures=False):
+            kind = self._caption_item_kind(item)
+            if not kind:
+                continue
+
+            image = self._item_image(item, document)
+            if image is None:
+                caption_errors += 1
+                if kind == "table":
+                    table_cursor = self._advance_next_table(markdown, item, document, table_cursor)
+                else:
+                    image_cursor = self._advance_next_image(markdown, image_cursor)
+                logger.warning(f"Skipping {kind} caption because Docling did not provide an image")
+                continue
+
+            prompt = self._vlm_caption_prompt(kind, item, document)
+            caption = vlm.caption_image(image, prompt)
+            if not caption:
+                caption_errors += 1
+                if kind == "table":
+                    table_cursor = self._advance_next_table(markdown, item, document, table_cursor)
+                else:
+                    image_cursor = self._advance_next_image(markdown, image_cursor)
+                continue
+
+            caption_block = self._caption_markdown_block(kind, caption)
+            if kind == "table":
+                markdown, table_cursor, replaced = self._replace_next_table(
+                    markdown,
+                    item,
+                    document,
+                    caption_block,
+                    table_cursor,
+                )
+                if replaced:
+                    table_captions_added += 1
+                else:
+                    caption_errors += 1
+                    logger.warning("Generated VLM table caption but could not replace table Markdown")
+            else:
+                markdown, image_cursor, replaced = self._replace_next_image(
+                    markdown,
+                    caption_block,
+                    image_cursor,
+                )
+                if replaced:
+                    figure_captions_added += 1
+                else:
+                    caption_errors += 1
+                    logger.warning("Generated VLM figure caption but could not replace image placeholder")
+
+        return markdown, DoclingCaptionStats(
+            table_captions_added=table_captions_added,
+            figure_captions_added=figure_captions_added,
+            caption_errors=caption_errors,
+        )
+
+    def _get_vlm_service(self):
+        if self._vlm_service is None:
+            self._vlm_service = get_vlm_service()
+        return self._vlm_service
+
+    def _vlm_enabled(self) -> bool:
+        return bool(getattr(self._get_vlm_service(), "is_configured", False))
+
+    def _caption_item_kind(self, item: Any) -> Optional[str]:
+        label = getattr(item, "label", "")
+        label_value = getattr(label, "value", label)
+        if label_value == "table":
+            return "table"
+        if label_value in {"picture", "chart"}:
+            return "figure"
+        return None
+
+    def _item_image(self, item: Any, document: Any) -> Any:
+        try:
+            return item.get_image(document)
+        except Exception as e:
+            logger.warning(f"Failed to extract Docling item image: {e}")
+            return None
+
+    def _vlm_caption_prompt(self, kind: str, item: Any, document: Any) -> str:
+        native_caption = self._native_caption(item, document)
+        if kind == "table":
+            table_markdown = self._item_markdown(item, document)
+            context = self._truncate_context(table_markdown)
+            return (
+                "Caption this scientific paper table for retrieval and Q&A. "
+                "Mention the main variables, methods, metrics, important numeric "
+                "comparisons, and the overall takeaway. Be faithful to the image; "
+                "do not invent values. Return 3-6 concise sentences.\n\n"
+                f"Existing caption: {native_caption or 'N/A'}\n"
+                f"Docling table text:\n{context or 'N/A'}"
+            )
+
+        return (
+            "Caption this scientific paper figure for retrieval and Q&A. "
+            "Describe what the figure shows, its axes or components when visible, "
+            "the main trend or result, and any labels that matter. Be faithful to "
+            "the image and return 3-6 concise sentences.\n\n"
+            f"Existing caption: {native_caption or 'N/A'}"
+        )
+
+    def _native_caption(self, item: Any, document: Any) -> str:
+        try:
+            return (item.caption_text(document) or "").strip()
+        except Exception:
+            return ""
+
+    def _item_markdown(self, item: Any, document: Any) -> str:
+        try:
+            return (item.export_to_markdown(document) or "").strip()
+        except Exception:
+            return ""
+
+    def _truncate_context(self, text: str, max_chars: int = 4000) -> str:
+        if len(text) <= max_chars:
+            return text
+        return text[:max_chars].rsplit("\n", 1)[0] + "\n..."
+
+    def _caption_markdown_block(self, kind: str, caption: str) -> str:
+        normalized = " ".join(caption.split())
+        prefix = "Table caption" if kind == "table" else "Figure caption"
+        return f"{prefix}: {normalized}"
+
+    def _replace_next_table(
+        self,
+        markdown: str,
+        item: Any,
+        document: Any,
+        replacement: str,
+        start_index: int,
+    ) -> tuple[str, int, bool]:
+        item_markdown = self._item_markdown(item, document)
+        found = self._find_next_table(markdown, item_markdown, start_index)
+        if found is None:
+            return markdown, start_index, False
+        start, end = found
+        updated = f"{markdown[:start]}{replacement}{markdown[end:]}"
+        return updated, start + len(replacement), True
+
+    def _advance_next_table(
+        self,
+        markdown: str,
+        item: Any,
+        document: Any,
+        start_index: int,
+    ) -> int:
+        item_markdown = self._item_markdown(item, document)
+        found = self._find_next_table(markdown, item_markdown, start_index)
+        if found is None:
+            return start_index
+        return found[1]
+
+    def _find_next_table(
+        self,
+        markdown: str,
+        item_markdown: str,
+        start_index: int,
+    ) -> Optional[tuple[int, int]]:
+        if item_markdown:
+            exact_start = markdown.find(item_markdown, start_index)
+            if exact_start >= 0:
+                return exact_start, exact_start + len(item_markdown)
+
+        match = self._TABLE_BLOCK_PATTERN.search(markdown, start_index)
+        if not match:
+            return None
+        return match.start("table"), match.end("table")
+
+    def _replace_next_image(
+        self,
+        markdown: str,
+        replacement: str,
+        start_index: int,
+    ) -> tuple[str, int, bool]:
+        image_start = markdown.find(self.IMAGE_PLACEHOLDER, start_index)
+        if image_start < 0:
+            return markdown, start_index, False
+        image_end = image_start + len(self.IMAGE_PLACEHOLDER)
+        updated = f"{markdown[:image_start]}{replacement}{markdown[image_end:]}"
+        return updated, image_start + len(replacement), True
+
+    def _advance_next_image(self, markdown: str, start_index: int) -> int:
+        image_start = markdown.find(self.IMAGE_PLACEHOLDER, start_index)
+        if image_start < 0:
+            return start_index
+        return image_start + len(self.IMAGE_PLACEHOLDER)
 
     def _markdown_blocks(self, markdown: str) -> tuple[list[_MarkdownBlock], int, int]:
         blocks: list[_MarkdownBlock] = []

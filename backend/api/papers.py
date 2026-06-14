@@ -267,6 +267,9 @@ async def download_paper_pdf(paper_id: int, db: AsyncSession = Depends(get_db)):
             "parser": parsed.parser,
             "chunker": parsed.chunker,
             "table_blocks_removed": parsed.table_blocks_removed,
+            "table_captions_added": parsed.table_captions_added,
+            "figure_captions_added": parsed.figure_captions_added,
+            "caption_errors": parsed.caption_errors,
         }
 
     except HTTPException:
@@ -316,7 +319,9 @@ async def rebuild_chunks(force: bool = False, db: AsyncSession = Depends(get_db)
                 continue
             logger.info(
                 f"Rebuilt {len(chunks)} chunks for {paper.arxiv_id}; "
-                f"dropped {parsed.table_blocks_removed} table blocks"
+                f"dropped {parsed.table_blocks_removed} table blocks; "
+                f"captioned {parsed.table_captions_added} tables and "
+                f"{parsed.figure_captions_added} figures"
             )
             processed += 1
         except Exception as e:
