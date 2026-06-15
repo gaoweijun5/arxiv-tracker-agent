@@ -2,7 +2,7 @@
 
 > **If you find this project helpful, please give it a ⭐ Star! Your support is my motivation to keep improving.**
 
-AI-powered arXiv paper tracking and recommendation system with an autonomous LangGraph ReAct agent.
+AI-powered arXiv paper tracking, recommendation, and paper Q&A system with a LangGraph StateGraph workflow, hybrid RAG retrieval, and optional VLM-enhanced PDF parsing.
 
 ![项目截图1](./demo/demo1.png)
 ![项目截图2](./demo/demo2.png)
@@ -11,21 +11,23 @@ English | [中文](README_CN.md)
 
 ## Features
 
-- **Autonomous Paper Agent** - StateGraph workflow that automatically discovers, analyzes, and saves papers with multiple fallback strategies
+- **Autonomous Paper Agent** - Deterministic LangGraph StateGraph workflow that automatically discovers, analyzes, and saves papers with multiple fallback strategies
 - **Smart Paper Discovery** - Search arXiv based on your research interests with configurable date range and multiple search strategies
+- **Topic Explorer** - Explore a new research topic from a natural-language query, stream progress over WebSocket, and save selected papers
 - **AI Summarization** - Generate summaries, key findings, and Chinese translations via OpenAI-compatible or Anthropic API
-- **Semantic Recommendations** - Vector-based paper matching using DashScope embeddings
+- **Semantic Recommendations** - Vector-based paper matching using OpenAI-compatible embeddings, with DashScope as the default example
 - **Research Reports** - Generate a persistent Markdown research report after every manual or scheduled fetch
-- **Full-text Q&A** - Manually download a paper PDF, then ask questions with full PDF content as context
+- **Hybrid Paper Q&A** - Manually download a paper PDF, then ask questions with semantic vector retrieval, BM25 keyword retrieval, RRF reranking, and full-text fallback
+- **Docling + VLM Captioning** - Parse PDFs with Docling and optionally caption tables/figures through an OpenAI-compatible VLM before chunking
 - **Real-time Progress** - WebSocket-powered live updates during paper fetching
 - **Paper Management** - Bookmark, mark as read, filter, batch delete papers
 - **LangSmith Observability** - Full tracing of agent decisions and LLM calls
 - **Automatic Fallbacks** - LLM failures fall back to local scoring; API timeouts retry with exponential backoff
-- **Weekly Cleanup** - Automatic cleanup of old unread papers (non-bookmarked, read papers older than 30 days)
+- **Weekly Cleanup** - Automatic cleanup of old read, unbookmarked papers
 
 ## Quick Start
 
-> ⚠️ **This project only supports macOS.** Windows and Linux are not supported.
+> ⚠️ **Designed for macOS.**
 
 ### Prerequisites
 
@@ -48,14 +50,15 @@ This will create `.env`, install all dependencies, and create data directories.
 
 ```env
 # === LLM API ===
-# Provider: "openai" (OpenAI-compatible) or "anthropic"
+# Provider: "openai" (DeepSeek/OpenAI-compatible) or "anthropic"
 LLM_PROVIDER=openai
 
-# OpenAI-compatible API
+# OpenAI-compatible (DeepSeek, OpenAI, etc.)
 OPENAI_API_KEY=sk-your-api-key-here
-OPENAI_API_BASE=your-api-base-here
+OPENAI_API_BASE=https://api.deepseek.com
 LLM_MODEL=deepseek-v4-flash
-# Optional: use a separate tool-call-capable model for Fetch Papers agent
+# Optional: use a separate tool-call-capable model for Fetch Papers agent.
+# Recommended if your main model is a reasoning model such as deepseek-reasoner.
 # LLM_AGENT_MODEL=deepseek-v4-flash
 
 # Anthropic API 
@@ -63,14 +66,22 @@ LLM_MODEL=deepseek-v4-flash
 # ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 # === Embedding API ===
-# Any OpenAI-compatible embedding API works.
+# Any OpenAI-compatible embedding API works (DashScope, DeepSeek, OpenAI, etc.)
 EMBEDDING_API_KEY=sk-your-embedding-key
 EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
 EMBEDDING_MODEL=text-embedding-v4
 
+# === VLM Caption API ===
+# OpenAI-compatible chat completions endpoint used to caption Docling tables/figures.
+# Optional; enables table/figure captions during PDF parsing.
+# VLM_API_KEY=sk-your-vlm-api-key
+# VLM_API_ENDPOINT=https://api.openai.com/v1
+# VLM_MODEL=gpt-4o-mini
+# VLM_IMAGE_SCALE=2.0
+
 # === Optional ===
 LANGSMITH_API_KEY=your-langsmith-key
-LANGSMITH_PROJECT=
+LANGSMITH_PROJECT=Agent
 
 # === Advanced (defaults are fine) ===
 # DATABASE_URL=sqlite+aiosqlite:///./data/arxiv_tracker.db
@@ -82,6 +93,10 @@ LANGSMITH_PROJECT=
 # ARXIV_RATE_LIMIT_BACKOFF_SECONDS=60
 # ARXIV_REQUEST_TIMEOUT_SECONDS=90
 # ARXIV_USER_AGENT="arxiv-tracker-agent/0.1.0 (mailto:your-email@example.com)"
+# RAG_CHUNK_TOP_K=8
+# RAG_RETRIEVAL_CANDIDATES=20
+# RAG_CONFIDENCE_THRESHOLD=0.65
+# RAG_RRF_K=60
 # DAILY_FETCH_HOUR=8
 # DAILY_FETCH_MINUTE=0
 ```
@@ -94,7 +109,7 @@ LANGSMITH_PROJECT=
 make dev
 ```
 
-This starts both backend (http://localhost:8000) and frontend (http://localhost:3000) simultaneously. The project is intended to run locally through `make`; Docker is not required.
+This starts both backend (http://localhost:8000) and frontend (http://localhost:3000). The project runs locally through `make`.
 
 Other commands:
 - `make backend` - Start backend only
@@ -107,18 +122,25 @@ Other commands:
 
 Go to **Interests** page and add your research topics with keywords and arXiv categories.
 
-### 2. Fetch Papers
+### 2. Explore a Topic
+
+Use **Explore a Topic** on the Dashboard to try a natural-language research direction before adding it as a long-term interest:
+- Enter a research question or topic description
+- The explorer expands keywords, searches arXiv, analyzes candidate papers, and streams progress over WebSocket
+- Save useful papers directly into your collection
+
+### 3. Fetch Papers
 
 Click **Fetch Papers** on Dashboard or Settings page:
 - Select specific topics to search
 - Choose search period (1-30 days)
 - Set max results per topic
 - The autonomous agent will search, analyze, and save paper metadata automatically
-- PDFs are not downloaded during fetch; use the download button on a paper detail page when you need full-text Q&A
+- Use the download button on a paper detail page when you need paper Q&A
 - A research report is generated after each fetch and saved under **Reports**
 - Watch real-time progress via WebSocket
 
-### 3. Browse Papers
+### 4. Browse Papers
 
 **Papers** page shows all fetched papers in a table:
 - Filter by All / Unread / Bookmarked
@@ -127,12 +149,14 @@ Click **Fetch Papers** on Dashboard or Settings page:
 - View AI-generated summaries
 - Click to read full details and ask questions
 
-### 4. Paper Q&A
+### 5. Paper Q&A
 
 On paper detail page, click **Chat** to open the Q&A sidebar:
-- Click the download button first if the paper is not marked **PDF Ready**
+- Click the download button first to make the paper **PDF Ready**
 - Ask questions about the paper
-- AI reads the full PDF and answers based on complete content
+- The backend parses the PDF with Docling, optionally captions tables/figures with a VLM, and stores paragraph-aware chunks
+- Q&A first uses hybrid chunk retrieval (semantic vectors + BM25 + RRF); if confidence is low, it falls back to full paper context reconstructed from chunks
+- Retrieved source chunks and confidence scores are shown when chunk-level retrieval is used
 - Conversation history is saved
 - Clear chat history with the trash icon
 
@@ -140,24 +164,32 @@ On paper detail page, click **Chat** to open the Q&A sidebar:
 
 **Fetch returns 0 papers or fails**
 
-This is usually caused by arXiv API rate limiting (HTTP 429), not a system bug. arXiv limits the number of requests from the same IP. If you've been testing frequently, wait 10-30 minutes before trying again. The system serializes arXiv traffic, waits at least 3 seconds between requests, and backs off after 403/429 responses.
+arXiv API rate limiting (HTTP 429) can cause empty or failed fetches. If you've been testing frequently, wait 10-30 minutes before trying again. The system serializes arXiv traffic, waits at least 3 seconds between requests, and backs off after 403/429 responses.
 
 **Fetch fails with `'str' object has no attribute 'model_dump'`**
 
-This usually means the OpenAI-compatible LLM endpoint failed during agent tool calling. Use a tool-call-capable chat model for the fetch agent, for example `LLM_AGENT_MODEL=deepseek-v4-flash`, instead of a reasoning-only model such as `deepseek-reasoner`. The backend also falls back to a sequential compatibility workflow when this provider-side tool-calling error is detected.
+This usually means the OpenAI-compatible LLM endpoint failed during agent tool calling. Set a tool-call-capable fetch model, for example `LLM_AGENT_MODEL=deepseek-v4-flash`. The backend also falls back to a sequential compatibility workflow for this provider-side error.
+
+**Q&A asks for PDF download**
+
+Paper Q&A is local-first. Click the download button on the paper detail page first; the backend will download the PDF, parse it with Docling, create chunks, and sync them to SQLite FTS5 and ChromaDB.
+
+**Table or figure captions are missing in Q&A**
+
+Set `VLM_API_KEY`, `VLM_API_ENDPOINT`, and `VLM_MODEL` to enable OpenAI-compatible table/figure captioning during PDF parsing.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend (React)                          │
-│    Dashboard | Papers | Recommendations | Interests         │
+│ Dashboard | Topic Explorer | Papers | Reports | Settings    │
 └─────────────────────────┬───────────────────────────────────┘
                           │ HTTP + WebSocket
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                          │
-│    Papers API | Interests API | System API | WebSocket      │
+│ Papers | Conversations | Reports | Explore | System | WS    │
 └─────────────────────────┬───────────────────────────────────┘
                           │
         ┌─────────────────┼─────────────────┐
@@ -166,8 +198,10 @@ This usually means the OpenAI-compatible LLM endpoint failed during agent tool c
 │  LangGraph    │ │   Services    │ │   Storage     │
 │               │ │               │ │               │
 │ - Paper Agent │ │ - arXiv API   │ │ - SQLite      │
-│ (StateGraph)  │ │ - LLM API    │ │ - ChromaDB    │
-│ - QA Agent    │ │ - RAG Q&A     │ │               │
+│ (StateGraph)  │ │ - LLM API     │ │ - FTS5 chunks │
+│ - Topic       │ │ - Docling PDF │ │ - ChromaDB    │
+│   Explorer    │ │ - VLM Caption │ │ - Local PDFs  │
+│               │ │ - Hybrid RAG  │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
                           │
                           ▼
@@ -176,6 +210,30 @@ This usually means the OpenAI-compatible LLM endpoint failed during agent tool c
                    │  (Tracing)  │
                    └─────────────┘
 ```
+
+### PDF & RAG Q&A Pipeline
+
+Paper Q&A uses a local hybrid retrieval pipeline:
+
+```
+Download PDF
+  ▼
+Docling parse
+  ▼
+Optional VLM captioning for tables/figures
+  ▼
+Paragraph-aware chunks
+  ▼
+SQLite FTS5 + ChromaDB
+  ▼
+Semantic retrieval + BM25 retrieval
+  ▼
+RRF reranking + confidence check
+  ▼
+Answer with source chunks, or fall back to full paper context
+```
+
+If VLM captioning is configured, table and figure captions are inserted back into the parsed document before chunking so visual content can participate in retrieval.
 
 ### Paper Agent (StateGraph Workflow)
 
@@ -218,7 +276,7 @@ User: "Fetch Papers"
 ```
 
 **Key Features:**
-- **Deterministic Flow**: Predefined node sequence instead of LLM-driven tool selection
+- **Deterministic Flow**: Predefined node sequence for stable execution
 - **Multiple Search Strategies**: Each interest generates 4-6 search attempts with different parameters
 - **Local Scoring**: Fast keyword/category matching before expensive LLM analysis
 - **Automatic Fallbacks**: LLM failures fall back to local scoring; timeouts retry with exponential backoff
